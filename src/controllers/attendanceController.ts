@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import Attendance, { IAttendance } from "../models/attendanceModel";
-
+import Account from "../models/adminModel";
 // Check-In
 export const checkIn = async (req: Request, res: Response) => {
   try {
@@ -98,5 +98,55 @@ export const editAttendance = async (req: Request, res: Response) => {
     res.json({ message: "Attendance updated successfully", attendance });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
+  }
+};
+
+export const getAttendanceSummary = async (req, res) => {
+  try {
+    // 🔹 Today date (ignore time)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 🔹 Total employees
+    const totalEmployees = await Account.countDocuments();
+
+    // 🔹 Attendance count by status
+    const summary = await Attendance.aggregate([
+      { $match: { date: today } },
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // 🔹 Default values
+    const response = {
+      totalEmployees,
+      present: 0,
+      absent: 0,
+      leave: 0,
+      late: 0,
+    };
+
+    // 🔹 Map aggregation result
+    summary.forEach((item) => {
+      if (item._id === "Present") response.present = item.count;
+      if (item._id === "Absent") response.absent = item.count;
+      if (item._id === "Leave") response.leave = item.count;
+      if (item._id === "Late") response.late = item.count;
+    });
+
+    res.status(200).json({
+      success: true,
+      data: response,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch attendance summary",
+      error: error.message,
+    });
   }
 };

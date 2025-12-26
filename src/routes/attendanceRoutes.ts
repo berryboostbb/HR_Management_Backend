@@ -4,6 +4,7 @@ import {
   checkOut,
   getAllAttendance,
   editAttendance,
+  getAttendanceSummary,
 } from "../controllers/attendanceController";
 
 import {
@@ -18,6 +19,8 @@ const router = express.Router();
 router.post("/checkin", validateBody(checkInSchema), checkIn);
 router.post("/checkout", validateBody(checkOutSchema), checkOut);
 router.get("/getAllAttendance", getAllAttendance);
+router.get("/getAttendanceSummary", getAttendanceSummary);
+
 router.put(
   "/UpdateAttendance/:id",
   validateBody(editAttendanceSchema),
