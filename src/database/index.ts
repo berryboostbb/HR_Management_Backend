@@ -1,16 +1,18 @@
 // src/database.ts
 import mongoose from "mongoose";
 
-let cached = (global as any).mongoose || { conn: null, promise: null };
+let cached: {
+  conn: mongoose.Connection | null;
+  promise: Promise<mongoose.Connection> | null;
+} = (global as any).mongoose || { conn: null, promise: null };
 
 const dbConnect = async () => {
   if (cached.conn) {
-    console.log("⚡ Using existing MongoDB connection");
-    return;
+    // ✅ Use existing connection if available
+    return cached.conn;
   }
 
   const uri = process.env.MONGODB_CONNECTION_STRING;
-
   if (!uri) {
     throw new Error(
       "❌ MONGODB_CONNECTION_STRING not set in environment variables"
@@ -27,17 +29,13 @@ const dbConnect = async () => {
         socketTimeoutMS: 45000,
       })
       .then((mongooseInstance) => {
-        console.log("✅✅ MongoDB connected..............");
-        return mongooseInstance;
-      })
-      .catch((err) => {
-        console.error("❌ MongoDB connection error:", err);
-        throw err;
+        return mongooseInstance.connection;
       });
   }
 
   cached.conn = await cached.promise;
   (global as any).mongoose = cached;
+  return cached.conn;
 };
 
 export default dbConnect;
