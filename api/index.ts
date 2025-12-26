@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import dbConnect from "../src/database"; // adjust path
-import adminRouter from "../src/routes/adminRoutes";
+import authRouter from "../src/routes/authRoutes";
 import attendanceRouter from "../src/routes/attendanceRoutes";
 import leaveRouter from "../src/routes/leavesRoutes";
 import payrollRouter from "../src/routes/payrollRoutes";
@@ -55,7 +55,7 @@ app.get("/", (_req, res) => {
   res.status(200).json({ message: "Backend running on Vercel Serverless!" });
 });
 
-app.use("/admin", adminRouter);
+app.use("/auth", authRouter);
 app.use("/attendance", attendanceRouter);
 app.use("/leave", leaveRouter);
 app.use("/payroll", payrollRouter);
