@@ -1,8 +1,7 @@
-// api/index.ts
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import dbConnect from "../src/database/index";
+import dbConnect from "../src/database"; // adjust path
 import adminRouter from "../src/routes/adminRoutes";
 import attendanceRouter from "../src/routes/attendanceRoutes";
 import leaveRouter from "../src/routes/leavesRoutes";
@@ -33,18 +32,22 @@ app.use(
   })
 );
 
-// DB connection per request (for serverless)
-let isConnected = false;
+// DB connection per request
+import mongoose from "mongoose";
 async function ensureDBConnection() {
-  if (!isConnected) {
-    await dbConnect();
-    isConnected = true;
-  }
+  if (mongoose.connection.readyState === 1) return; // already connected
+  await dbConnect();
 }
 
-app.use(async (_req, _res, next) => {
-  await ensureDBConnection();
-  next();
+// Routes wrapper
+app.use(async (req, res, next) => {
+  try {
+    await ensureDBConnection();
+    next();
+  } catch (err) {
+    console.error("DB connection failed:", err);
+    res.status(500).json({ error: "DB connection failed" });
+  }
 });
 
 // Routes
@@ -59,5 +62,5 @@ app.use("/payroll", payrollRouter);
 app.use("/upload", uploadFileRoutes);
 app.use("/events", eventsRoutes);
 
-// ✅ IMPORTANT: export default for Vercel
+// ✅ Export app for Vercel
 export default app;
