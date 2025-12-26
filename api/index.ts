@@ -2,7 +2,12 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-
+import adminRouter from "../src/routes/adminRoutes";
+import attendanceRouter from "../src/routes/attendanceRoutes";
+import leaveRouter from "../src/routes/leavesRoutes";
+import payrollRouter from "../src/routes/payrollRoutes";
+import uploadFileRoutes from "../src/routes/uploadRoute";
+import eventsRoutes from "../src/routes/eventRoutes";
 dotenv.config();
 
 const app = express();
@@ -26,6 +31,12 @@ app.use(
   })
 );
 
+app.use("/admin", adminRouter);
+app.use("/attendance", attendanceRouter);
+app.use("/leave", leaveRouter);
+app.use("/payroll", payrollRouter);
+app.use("/upload", uploadFileRoutes);
+app.use("/events", eventsRoutes);
 // ✅ Root route
 app.get("/", (_req, res) => {
   res.status(200).json({
