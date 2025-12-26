@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from "express";
-import { v4 as uuidv4 } from "uuid";
 import multer from "multer";
 import cloudinary from "../cloudinary/cloudinaryConfig";
 
@@ -19,7 +18,7 @@ const uploadController = {
       if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });
       }
-
+      const { v4: uuidv4 } = await import("uuid");
       const fileType = (req.query.fileType as string) || "assets";
       const file = req.file;
       const fileName = `${uuidv4()}-${file.originalname}`;
