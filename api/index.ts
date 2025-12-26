@@ -1,18 +1,50 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-import app from "../src/server"; // path to your app.js
-import dbConnect from "../src/database";
+// app.js
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import adminRouter from "../src/routes/adminRoutes";
+import attendanceRouter from "../src/routes/attendanceRoutes";
+import leaveRouter from "../src/routes/leavesRoutes";
+import payrollRouter from "../src/routes/payrollRoutes";
+import uploadFileRoutes from "../src/routes/uploadRoute";
+import eventsRoutes from "../src/routes/eventRoutes";
 
-let isDbConnected = false;
+dotenv.config();
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  try {
-    if (!isDbConnected) {
-      await dbConnect();
-      isDbConnected = true;
-    }
-    app(req, res); // forward the request to Express app
-  } catch (error) {
-    console.error("Serverless function error:", error);
-    res.status(500).json({ message: "Internal Server Error", error });
-  }
-}
+const app = express();
+
+// ✅ Middlewares
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true }));
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://medi-rep-front-end.vercel.app",
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+      else callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
+
+// ✅ Root route
+app.get("/", (_req, res) => {
+  res.status(200).json({
+    message: "✅ GCC Backend (Serverless) is running successfully on Vercel!",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.use("/admin", adminRouter);
+app.use("/attendance", attendanceRouter);
+app.use("/leave", leaveRouter);
+app.use("/payroll", payrollRouter);
+app.use("/upload", uploadFileRoutes);
+app.use("/events", eventsRoutes);
+
+export default app;
