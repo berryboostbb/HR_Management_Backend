@@ -20,7 +20,7 @@ interface ILoanPF {
   pf: number;
 }
 
-export interface IAdmin extends Document {
+export interface IUser extends Document {
   employeeId: string;
   name: string;
   designation: string;
@@ -42,7 +42,7 @@ export interface IAdmin extends Document {
 const generateEmployeeId = (): string =>
   `EMP${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
-const AdminSchema: Schema<IAdmin> = new Schema(
+const UserSchema: Schema<IUser> = new Schema(
   {
     employeeId: { type: String, default: generateEmployeeId, unique: true },
     name: { type: String, required: true },
@@ -80,7 +80,7 @@ const AdminSchema: Schema<IAdmin> = new Schema(
   { timestamps: true }
 );
 
-AdminSchema.pre<IAdmin>("save", async function () {
+UserSchema.pre<IUser>("save", async function () {
   if (this.isModified("password")) {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
@@ -103,11 +103,11 @@ AdminSchema.pre<IAdmin>("save", async function () {
     tax;
 });
 
-AdminSchema.methods.comparePassword = async function (
+UserSchema.methods.comparePassword = async function (
   candidatePassword: string
 ) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-const Admin = mongoose.model<IAdmin>("Admin", AdminSchema);
-export default Admin;
+const User = mongoose.model<IUser>("User", UserSchema);
+export default User;

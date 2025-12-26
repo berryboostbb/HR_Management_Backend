@@ -10,6 +10,8 @@ const dbConnect = async () => {
   }
 
   const uri = process.env.MONGODB_CONNECTION_STRING;
+  console.log("🚀 ~ dbConnect ~ uri:", uri);
+
   if (!uri) {
     throw new Error(
       "❌ MONGODB_CONNECTION_STRING not set in environment variables"

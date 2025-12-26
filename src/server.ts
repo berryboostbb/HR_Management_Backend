@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import dbConnect from "./database";
-import adminRouter from "../src/routes/adminRoutes";
+import authRouter from "./routes/authRoutes";
 import attendanceRouter from "../src/routes/attendanceRoutes";
 import leaveRouter from "../src/routes/leavesRoutes";
 import payrollRouter from "../src/routes/payrollRoutes";
@@ -42,8 +42,11 @@ app.get("/", (_req, res) => {
 });
 
 // MongoDB connection
+// MongoDB connection function
 let isConnected = false;
 async function ensureDBConnection() {
+  console.log("🚀 ~ ensureDBConnection ~ ensureDBConnection:");
+
   if (!isConnected) {
     try {
       await dbConnect();
@@ -54,12 +57,11 @@ async function ensureDBConnection() {
     }
   }
 }
-app.use(async (_req, _res, next) => {
-  await ensureDBConnection();
-  next();
-});
 
-app.use("/admin", adminRouter);
+// Call the connection function directly on startup to ensure MongoDB is connected
+ensureDBConnection();
+
+app.use("/auth", authRouter);
 app.use("/attendance", attendanceRouter);
 app.use("/leave", leaveRouter);
 app.use("/payroll", payrollRouter);

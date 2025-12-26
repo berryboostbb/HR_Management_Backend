@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import AccessToken from "../models/accessToken";
-import Admin from "../models/adminModel";
+import Admin from "../models/userModel";
 import JWTService from "../services/JWTServices";
 
 declare module "express" {

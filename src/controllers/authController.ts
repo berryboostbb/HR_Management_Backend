@@ -1,10 +1,9 @@
 import { Request, Response } from "express";
-import Admin from "../models/adminModel";
+import User from "../models/userModel";
 import jwt from "jsonwebtoken";
 
-let ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET;
 const generateToken = (id: string) => {
-  return jwt.sign({ id }, ACCESS_TOKEN_SECRET, { expiresIn: "1d" });
+  return jwt.sign({ id }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "1d" });
 };
 
 const generateEmployeeId = (role: string) => {
@@ -18,8 +17,7 @@ const generateEmployeeId = (role: string) => {
   return `${rolePart}${numberPart}${letterPart}`;
 };
 
-// Register Admin
-export const registerAdmin = async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response) => {
   try {
     const {
       name,
@@ -38,12 +36,11 @@ export const registerAdmin = async (req: Request, res: Response) => {
       department,
     } = req.body;
 
-    const exists = await Admin.findOne({ email });
-    if (exists)
-      return res.status(400).json({ message: "Admin already exists" });
+    const exists = await User.findOne({ email });
+    if (exists) return res.status(400).json({ message: "User already exists" });
 
     const employeeId = generateEmployeeId(employeeRole);
-    const admin = await Admin.create({
+    const user = await User.create({
       name,
       email,
       password,
@@ -61,31 +58,33 @@ export const registerAdmin = async (req: Request, res: Response) => {
       employeeId,
     });
 
-    res.status(201).json({ admin, token: generateToken(admin._id.toString()) });
+    res.status(201).json({ user, token: generateToken(user._id.toString()) });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }
 };
 
-// Login Admin
-export const loginAdmin = async (req: Request, res: Response) => {
+// Login
+export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
-    const admin = await Admin.findOne({ email });
-    if (!admin) return res.status(400).json({ message: "Invalid credentials" });
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-    const isMatch = await admin.comparePassword(password);
-    if (!isMatch)
+    const isMatch = await user.comparePassword(password);
+    console.log("🚀 ~ login ~ isMatch:", isMatch);
+    if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
-
-    res.json({ admin, token: generateToken(admin._id.toString()) });
+    } else {
+      res.json({ user, token: generateToken(user._id.toString()) });
+    }
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }
 };
 
-// Get all Admins
-export const getAllAdmins = async (req: Request, res: Response) => {
+// Get all Users
+export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const { search } = req.query;
 
@@ -98,38 +97,38 @@ export const getAllAdmins = async (req: Request, res: Response) => {
       ];
     }
 
-    const admins = await Admin.find(query).sort({ createdAt: -1 });
-    res.json(admins);
+    const users = await User.find(query).sort({ createdAt: -1 });
+    res.json(users);
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }
 };
 
-// Update Admin
-export const updateAdmin = async (req: Request, res: Response) => {
+// Update User
+export const updateUser = async (req: Request, res: Response) => {
   try {
-    const admin = await Admin.findByIdAndUpdate(req.params.id, req.body, {
+    const user = await User.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
     });
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
-    res.json(admin);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json(user);
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }
 };
 
-// Delete Admin
-export const deleteAdmin = async (req: Request, res: Response) => {
+// Delete User
+export const deleteUser = async (req: Request, res: Response) => {
   try {
-    const admin = await Admin.findByIdAndDelete(req.params.id);
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
-    res.json({ message: "Admin deleted successfully" });
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json({ message: "User deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }
 };
-// Logout Admin
-export const logoutAdmin = async (req: Request, res: Response) => {
+// Logout User
+export const logout = async (req: Request, res: Response) => {
   try {
     // If using cookies, clear them
     res.clearCookie("token"); // if your token is in cookies
@@ -144,12 +143,12 @@ export const getTodayBirthdays = async (req: Request, res: Response) => {
     const todayDay = today.getDate();
     const todayMonth = today.getMonth() + 1;
 
-    const allAdmins = await Admin.find().select(
+    const allUsers = await User.find().select(
       "name email employeeId designation department image DOB employeeRole"
     );
 
-    const birthdays = allAdmins.filter((admin) => {
-      const dob = new Date(admin.DOB);
+    const birthdays = allUsers.filter((user) => {
+      const dob = new Date(user.DOB);
       const day = dob.getDate();
       const month = dob.getMonth() + 1;
       return day === todayDay && month === todayMonth;

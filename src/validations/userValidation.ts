@@ -2,7 +2,7 @@ import Joi from "joi";
 import { Request, Response, NextFunction } from "express";
 
 // Validation for registering an admin
-export const registerAdminSchema = Joi.object({
+export const registerSchema = Joi.object({
   name: Joi.string().min(3).max(50).required(),
   email: Joi.string().email().required(),
   image: Joi.string().required(),
@@ -37,13 +37,13 @@ export const registerAdminSchema = Joi.object({
 });
 
 // Validation for login
-export const loginAdminSchema = Joi.object({
+export const loginSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().required(),
 });
 
 // Validation for updating an admin
-export const updateAdminSchema = Joi.object({
+export const updateUserSchema = Joi.object({
   name: Joi.string().min(3).max(50),
   email: Joi.string().email(),
   password: Joi.string().min(6),

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import Attendance, { IAttendance } from "../models/attendanceModel";
-import Account from "../models/adminModel";
+import Account from "../models/userModel";
 // Check-In
 export const checkIn = async (req: Request, res: Response) => {
   try {
