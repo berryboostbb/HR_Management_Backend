@@ -26,6 +26,7 @@ export interface IAdmin extends Document {
   designation: string;
   department: string;
   employeeRole: string;
+  phoneNumber: string;
   joiningDate: Date;
   salaryStructure: ISalaryStructure;
   loanPF: ILoanPF;
@@ -46,6 +47,7 @@ const AdminSchema: Schema<IAdmin> = new Schema(
     employeeId: { type: String, default: generateEmployeeId, unique: true },
     name: { type: String, required: true },
     image: { type: String, required: true },
+    phoneNumber: { type: String, required: true },
     designation: { type: String, required: true },
     employeeRole: {
       type: String,

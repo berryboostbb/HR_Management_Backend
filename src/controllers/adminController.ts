@@ -28,6 +28,7 @@ export const registerAdmin = async (req: Request, res: Response) => {
       designation,
       employeeRole,
       joiningDate,
+      phoneNumber,
       salaryStructure,
       loanPF, // corrected
       DOB,
@@ -50,6 +51,7 @@ export const registerAdmin = async (req: Request, res: Response) => {
       employeeRole,
       department,
       joiningDate,
+      phoneNumber,
       salaryStructure,
       loanPF, // pass loanPF object here
       DOB,
@@ -85,7 +87,18 @@ export const loginAdmin = async (req: Request, res: Response) => {
 // Get all Admins
 export const getAllAdmins = async (req: Request, res: Response) => {
   try {
-    const admins = await Admin.find();
+    const { search } = req.query;
+
+    const query: any = {};
+
+    if (search) {
+      query.$or = [
+        { employeeId: { $regex: search, $options: "i" } },
+        { name: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const admins = await Admin.find(query).sort({ createdAt: -1 });
     res.json(admins);
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
@@ -123,5 +136,34 @@ export const logoutAdmin = async (req: Request, res: Response) => {
     res.json({ message: "Logged out successfully" });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
+  }
+};
+export const getTodayBirthdays = async (req: Request, res: Response) => {
+  try {
+    const today = new Date();
+    const todayDay = today.getDate();
+    const todayMonth = today.getMonth() + 1;
+
+    const allAdmins = await Admin.find().select(
+      "name email employeeId designation department image DOB employeeRole"
+    );
+
+    const birthdays = allAdmins.filter((admin) => {
+      const dob = new Date(admin.DOB);
+      const day = dob.getDate();
+      const month = dob.getMonth() + 1;
+      return day === todayDay && month === todayMonth;
+    });
+
+    res.status(200).json({
+      message: "Today's birthdays",
+      total: birthdays.length,
+      data: birthdays,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to fetch today's birthdays",
+      error,
+    });
   }
 };

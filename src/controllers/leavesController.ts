@@ -4,7 +4,8 @@ import Leave, { ILeave } from "../models/leavesModel";
 // Apply for leave
 export const applyLeave = async (req: Request, res: Response) => {
   try {
-    const { employeeId, leaveType, startDate, endDate, reason } = req.body;
+    const { employeeId, employeeName, leaveType, startDate, endDate, reason } =
+      req.body;
 
     // Optional: Check if leave overlaps with existing approved leaves
     const overlapping = await Leave.findOne({
@@ -23,6 +24,7 @@ export const applyLeave = async (req: Request, res: Response) => {
 
     const leave = await Leave.create({
       employeeId,
+      employeeName,
       leaveType,
       startDate,
       endDate,
@@ -57,7 +59,18 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
 // Get all leaves (HR/Admin)
 export const getAllLeaves = async (req: Request, res: Response) => {
   try {
-    const leaves = await Leave.find().sort({ appliedAt: -1 });
+    const { search } = req.query; // e.g., /leaves?search=Bilal
+
+    const query: any = {};
+
+    if (search) {
+      query.$or = [
+        { employeeId: { $regex: search, $options: "i" } },
+        { employeeName: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const leaves = await Leave.find(query).sort({ appliedAt: -1 });
     res.json(leaves);
   } catch (error) {
     res.status(500).json({ message: "Server error", error });

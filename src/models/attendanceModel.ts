@@ -2,16 +2,21 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IAttendance extends Document {
   employeeId: string;
-  employeeRole: string; // "Office" | "Field"
+  employeeName: string;
+  employeeRole: {
+    type: String;
+    required: true;
+    enum: ["Admin", "Office Staff", "Field Staff", "HR"];
+  };
   checkIn?: {
     time: Date;
-    location: { lat: number; lng: number };
+    location: { lat: number; lng: number; address: string };
   };
   checkOut?: {
     time: Date;
-    location: { lat: number; lng: number };
+    location: { lat: number; lng: number; address: string };
   };
-  date: Date; // attendance date
+  date: Date;
   status: "Present" | "Late" | "Absent" | "Half-day" | "On Leave";
   locked?: boolean; // after payroll
   reason?: string; // for manual edits
@@ -20,12 +25,14 @@ export interface IAttendance extends Document {
 const AttendanceSchema: Schema<IAttendance> = new Schema(
   {
     employeeId: { type: String, required: true },
+    employeeName: { type: String, required: true },
     employeeRole: { type: String, required: true },
     checkIn: {
       time: { type: Date },
       location: {
         lat: { type: Number },
         lng: { type: Number },
+        address: { type: String },
       },
     },
     checkOut: {
@@ -33,6 +40,7 @@ const AttendanceSchema: Schema<IAttendance> = new Schema(
       location: {
         lat: { type: Number },
         lng: { type: Number },
+        address: { type: String },
       },
     },
     date: { type: Date, required: true },

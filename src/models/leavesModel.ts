@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface ILeave extends Document {
   employeeId: string;
+  employeeName: string;
   leaveType: string;
   startDate: Date;
   endDate: Date;
@@ -14,6 +15,7 @@ export interface ILeave extends Document {
 const LeaveSchema: Schema<ILeave> = new Schema(
   {
     employeeId: { type: String, required: true },
+    employeeName: { type: String, required: true },
     leaveType: {
       type: String,
       required: true,
@@ -26,7 +28,7 @@ const LeaveSchema: Schema<ILeave> = new Schema(
         "Annual Leave",
         "Paternity Leave",
         "Compensatory Leave",
-      ], // add custom types dynamically if needed
+      ],
     },
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },

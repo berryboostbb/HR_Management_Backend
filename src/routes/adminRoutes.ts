@@ -6,6 +6,7 @@ import {
   updateAdmin,
   deleteAdmin,
   logoutAdmin,
+  getTodayBirthdays,
 } from "../controllers/adminController";
 import { validateBody } from "../validations/validateMiddleware";
 import {
@@ -22,5 +23,6 @@ router.get("/getAllAdmins", getAllAdmins);
 router.put("/updateAdmin/:id", validateBody(updateAdminSchema), updateAdmin);
 router.delete("/deleteAdmin/:id", deleteAdmin);
 router.post("/logoutAdmin", logoutAdmin);
+router.get("/birthdays", getTodayBirthdays);
 
 export default router;

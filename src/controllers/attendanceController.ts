@@ -4,31 +4,32 @@ import Attendance, { IAttendance } from "../models/attendanceModel";
 // Check-In
 export const checkIn = async (req: Request, res: Response) => {
   try {
-    const { employeeId, employeeRole, location } = req.body;
+    const { employeeId, employeeName, employeeRole, location } = req.body;
 
-    // Check if already checked in today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
     const existing = await Attendance.findOne({
       employeeId,
       date: today,
     });
 
-    if (existing && existing.checkIn)
+    if (existing?.checkIn)
       return res.status(400).json({ message: "Already checked in today" });
 
     const attendance =
       existing ||
       new Attendance({
         employeeId,
+        employeeName, // ✅ fixed
         employeeRole,
         date: today,
         status: "Present",
       });
 
     attendance.checkIn = { time: new Date(), location };
-
     await attendance.save();
+
     res.json({ message: "Checked in successfully", attendance });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
@@ -62,14 +63,24 @@ export const checkOut = async (req: Request, res: Response) => {
 // Get all attendance logs (HR/Admin)
 export const getAllAttendance = async (req: Request, res: Response) => {
   try {
-    const logs = await Attendance.find().sort({ date: -1 });
+    const { search } = req.query;
+
+    const query: any = {};
+
+    if (search) {
+      query.$or = [
+        { employeeId: { $regex: search, $options: "i" } },
+        { employeeName: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const logs = await Attendance.find(query).sort({ date: -1 });
     res.json(logs);
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }
 };
 
-// Edit attendance
 export const editAttendance = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

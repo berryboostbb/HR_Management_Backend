@@ -6,10 +6,14 @@ export const registerAdminSchema = Joi.object({
   name: Joi.string().min(3).max(50).required(),
   email: Joi.string().email().required(),
   image: Joi.string().required(),
+  phoneNumber: Joi.string().messages({
+    "string.pattern.base": "Phone number must be 10-15 digits",
+  }),
   password: Joi.string().min(6).required(),
   designation: Joi.string().required(),
   employeeRole: Joi.string()
     .valid("Admin", "Office Staff", "Field Staff", "HR")
+    .trim()
     .required(),
   department: Joi.string().required(),
   joiningDate: Joi.date().required(),
@@ -43,6 +47,9 @@ export const updateAdminSchema = Joi.object({
   name: Joi.string().min(3).max(50),
   email: Joi.string().email(),
   password: Joi.string().min(6),
+  phoneNumber: Joi.string().messages({
+    "string.pattern.base": "Phone number must be 10-15 digits",
+  }),
   image: Joi.string(),
   designation: Joi.string(),
   employeeRole: Joi.string().valid(

@@ -15,7 +15,8 @@ interface IAllowances {
 }
 
 export interface IPayroll extends Document {
-  employeeId: Types.ObjectId; // ✅ fixed
+  employeeId: string;
+  employeeName: string;
   month: string; // e.g. "December"
   year: number; // e.g. 2025
   basicSalary: number;
@@ -25,16 +26,21 @@ export interface IPayroll extends Document {
   approvedBy?: Types.ObjectId; // optional approver
   isLocked: boolean;
   processedAt: Date;
-  salarySlipUrl?: string; // ✅ missing field added
+  salarySlipUrl?: string; // optional salary slip
 }
 
 const PayrollSchema = new Schema<IPayroll>(
   {
     employeeId: {
-      type: Schema.Types.ObjectId,
-      ref: "Employee",
+      type: String,
       required: true,
-      index: true,
+      index: true, // good for search
+    },
+
+    employeeName: {
+      type: String,
+      required: true,
+      index: true, // good for search
     },
 
     month: {
@@ -74,7 +80,7 @@ const PayrollSchema = new Schema<IPayroll>(
 
     approvedBy: {
       type: Schema.Types.ObjectId,
-      ref: "User",
+      ref: "User", // optional approver, keep if you have User model
     },
 
     isLocked: {
@@ -94,10 +100,6 @@ const PayrollSchema = new Schema<IPayroll>(
   { timestamps: true }
 );
 
-/**
- * ✅ Prevent duplicate payroll
- * One employee → one payroll → per month/year
- */
 PayrollSchema.index({ employeeId: 1, month: 1, year: 1 }, { unique: true });
 
 const Payroll = mongoose.model<IPayroll>("Payroll", PayrollSchema);

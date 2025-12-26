@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from "express";
 // Leave application validation
 export const leaveApplySchema = Joi.object({
   employeeId: Joi.string().required(),
+  employeeName: Joi.string().required(),
   leaveType: Joi.string()
     .valid(
       "Casual Leave",

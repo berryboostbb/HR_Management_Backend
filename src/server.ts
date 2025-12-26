@@ -7,8 +7,9 @@ import attendanceRouter from "./routes/attendanceRoutes";
 import leaveRouter from "./routes/leavesRoutes";
 import payrollRouter from "./routes/payrollRoutes";
 import uploadFileRoutes from "./routes/uploadRoute";
-
+import eventsRoutes from "./routes/eventRoutes";
 import cors from "cors";
+
 const app = express();
 dotenv.config();
 
@@ -29,6 +30,7 @@ app.use("/attendance", attendanceRouter);
 app.use("/leave", leaveRouter);
 app.use("/payroll", payrollRouter);
 app.use("/upload", uploadFileRoutes);
+app.use("/events", eventsRoutes);
 // Start server
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
