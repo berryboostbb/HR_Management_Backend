@@ -1,7 +1,8 @@
-// app.js
+// api/index.ts
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import dbConnect from "../src/database/index";
 import adminRouter from "../src/routes/adminRoutes";
 import attendanceRouter from "../src/routes/attendanceRoutes";
 import leaveRouter from "../src/routes/leavesRoutes";
@@ -13,7 +14,7 @@ dotenv.config();
 
 const app = express();
 
-// ✅ Middlewares
+// Middlewares
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -32,12 +33,23 @@ app.use(
   })
 );
 
-// ✅ Root route
+// DB connection per request (for serverless)
+let isConnected = false;
+async function ensureDBConnection() {
+  if (!isConnected) {
+    await dbConnect();
+    isConnected = true;
+  }
+}
+
+app.use(async (_req, _res, next) => {
+  await ensureDBConnection();
+  next();
+});
+
+// Routes
 app.get("/", (_req, res) => {
-  res.status(200).json({
-    message: "✅ GCC Backend (Serverless) is running successfully on Vercel!",
-    timestamp: new Date().toISOString(),
-  });
+  res.status(200).json({ message: "Backend running on Vercel Serverless!" });
 });
 
 app.use("/admin", adminRouter);
@@ -47,4 +59,5 @@ app.use("/payroll", payrollRouter);
 app.use("/upload", uploadFileRoutes);
 app.use("/events", eventsRoutes);
 
+// ✅ IMPORTANT: export default for Vercel
 export default app;
