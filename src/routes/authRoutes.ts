@@ -14,6 +14,7 @@ import {
   loginSchema,
   updateUserSchema,
 } from "../validations/userValidation";
+import { getRoles } from "../controllers/roleController";
 
 const router = express.Router();
 
@@ -24,5 +25,9 @@ router.put("/updateUser/:id", validateBody(updateUserSchema), updateUser);
 router.delete("/deleteUser/:id", deleteUser);
 router.post("/logout", logout);
 router.get("/birthdays", getTodayBirthdays);
+
+//roles route
+
+router.get("/getRoles", getRoles);
 
 export default router;
