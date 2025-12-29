@@ -103,40 +103,73 @@ export const editAttendance = async (req: Request, res: Response) => {
 
 export const getAttendanceSummary = async (req, res) => {
   try {
-    // 🔹 Today date (ignore time)
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0); // start of today
 
-    // 🔹 Total employees
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1); // start of yesterday
+
     const totalEmployees = await Account.countDocuments();
+    const totalNewUsers = await Account.countDocuments({
+      createdAt: { $gte: today },
+    });
 
-    // 🔹 Attendance count by status
-    const summary = await Attendance.aggregate([
-      { $match: { date: today } },
-      {
-        $group: {
-          _id: "$status",
-          count: { $sum: 1 },
+    // Function to get attendance counts for a given date
+    const getAttendanceCounts = async (date) => {
+      const summary = await Attendance.aggregate([
+        { $match: { date } },
+        {
+          $group: {
+            _id: "$status",
+            count: { $sum: 1 },
+          },
         },
-      },
-    ]);
+      ]);
 
-    // 🔹 Default values
-    const response = {
-      totalEmployees,
-      present: 0,
-      absent: 0,
-      leave: 0,
-      late: 0,
+      const counts = {
+        Present: 0,
+        Absent: 0,
+        Leave: 0,
+        Late: 0,
+      };
+
+      summary.forEach((item) => {
+        counts[item._id] = item.count;
+      });
+
+      return counts;
     };
 
-    // 🔹 Map aggregation result
-    summary.forEach((item) => {
-      if (item._id === "Present") response.present = item.count;
-      if (item._id === "Absent") response.absent = item.count;
-      if (item._id === "Leave") response.leave = item.count;
-      if (item._id === "Late") response.late = item.count;
-    });
+    const todayCounts = await getAttendanceCounts(today);
+    const yesterdayCounts = await getAttendanceCounts(yesterday);
+
+    // Helper to calculate percentage change
+    const calcPercentageChange = (todayValue, yesterdayValue) => {
+      if (yesterdayValue === 0) return todayValue === 0 ? 0 : 100;
+      return ((todayValue - yesterdayValue) / yesterdayValue) * 100;
+    };
+
+    const response = {
+      totalEmployees,
+      totalNewUsers,
+      present: todayCounts.Present,
+      presentChange: calcPercentageChange(
+        todayCounts.Present,
+        yesterdayCounts.Present
+      ),
+      absent: todayCounts.Absent,
+      absentChange: calcPercentageChange(
+        todayCounts.Absent,
+        yesterdayCounts.Absent
+      ),
+      leave: todayCounts.Leave,
+      leaveChange: calcPercentageChange(
+        todayCounts.Leave,
+        yesterdayCounts.Leave
+      ),
+      late: todayCounts.Late,
+      lateChange: calcPercentageChange(todayCounts.Late, yesterdayCounts.Late),
+    };
 
     res.status(200).json({
       success: true,

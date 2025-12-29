@@ -61,7 +61,6 @@ const UserSchema: Schema<IUser> = new Schema(
     employeeType: {
       type: String,
       required: true,
-      enum: ["Admin", "Office Staff", "Field Staff", "HR"],
     },
     department: { type: String, required: true },
     joiningDate: { type: Date, required: true },

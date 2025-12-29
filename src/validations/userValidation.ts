@@ -9,7 +9,6 @@ const leaveEntitlementsSchema = Joi.object({
   paternityLeave: Joi.number().min(0).default(0),
 });
 
-// Validation for registering an admin
 export const registerSchema = Joi.object({
   name: Joi.string().min(3).max(50).required(),
   email: Joi.string().email().required(),
@@ -19,15 +18,12 @@ export const registerSchema = Joi.object({
   }),
   password: Joi.string().min(6).required(),
   role: Joi.string().required(),
-  employeeType: Joi.string()
-    .valid("Admin", "Office Staff", "Field Staff", "HR")
-    .trim()
-    .required(),
+  employeeType: Joi.string().trim().required(),
   department: Joi.string().required(),
   joiningDate: Joi.date().required(),
   DOB: Joi.date().required(),
   employeeStatus: Joi.string().required(),
-  gender: Joi.string().valid("Male", "Female", "Other").required(), // <-- add this
+  gender: Joi.string().valid("Male", "Female", "Other").required(),
   salaryStructure: Joi.object({
     basic: Joi.number().required(),
     incentive: Joi.object({
@@ -64,12 +60,7 @@ export const updateUserSchema = Joi.object({
   image: Joi.string(),
   role: Joi.string(),
 
-  employeeType: Joi.string().valid(
-    "Admin",
-    "Office Staff",
-    "Field Staff",
-    "HR"
-  ),
+  employeeType: Joi.string().valid("Office Staff", "Field Staff"),
 
   department: Joi.string(),
   joiningDate: Joi.date(),

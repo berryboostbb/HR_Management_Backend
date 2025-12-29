@@ -1,17 +1,18 @@
 import { Request, Response } from "express";
 import Payroll from "../models/payrollModel";
-import PDFDocument from "pdfkit";
-import fs from "fs";
-import path from "path";
 import { generateSalarySlipPDF } from "../utils/generateSalarySlipPDF";
+import path from "path";
 
 export const generatePayroll = async (req: Request, res: Response) => {
   try {
     const {
       employeeId,
       employeeName,
+      position,
       month,
       year,
+      presentDays,
+      approvedLeaves,
       basicSalary,
       allowances,
       deductions,
@@ -22,7 +23,7 @@ export const generatePayroll = async (req: Request, res: Response) => {
     if (exists)
       return res.status(400).json({ message: "Payroll already generated" });
 
-    // Calculate total allowances and deductions
+    // Calculate salaries
     const totalAllowances =
       (allowances.medical || 0) +
       (allowances.transport || 0) +
@@ -34,23 +35,28 @@ export const generatePayroll = async (req: Request, res: Response) => {
       (deductions.tax || 0) +
       (deductions.custom || 0);
 
-    const totalSalary = basicSalary + totalAllowances - totalDeductions;
+    const grossSalary = basicSalary + totalAllowances;
+    const netPay = grossSalary - totalDeductions;
 
     // Create payroll
     const payroll = await Payroll.create({
       employeeId,
-      month,
       employeeName,
+      position,
+      month,
       year,
+      presentDays,
+      approvedLeaves,
       basicSalary,
       allowances,
       deductions,
-      totalSalary,
+      grossSalary,
+      netPay,
+      payrollStatus: "Pending",
     });
 
-    const salarySlipUrl: string = await generateSalarySlipPDF(payroll);
-
-    // Save PDF URL to payroll
+    // Generate salary slip
+    const salarySlipUrl = await generateSalarySlipPDF(payroll);
     payroll.salarySlipUrl = salarySlipUrl;
     await payroll.save();
 
@@ -62,6 +68,7 @@ export const generatePayroll = async (req: Request, res: Response) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 export const approvePayroll = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -72,9 +79,9 @@ export const approvePayroll = async (req: Request, res: Response) => {
 
     payroll.approvedBy = approvedBy;
     payroll.isLocked = true;
+    payroll.payrollStatus = "Approved";
 
     await payroll.save();
-
     res.json({ message: "Payroll approved and locked", payroll });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
@@ -84,15 +91,12 @@ export const approvePayroll = async (req: Request, res: Response) => {
 export const getAllPayrolls = async (req: Request, res: Response) => {
   try {
     const { employeeId, employeeName } = req.query;
-
     const query: any = {};
 
-    if (employeeId) {
+    if (employeeId)
       query.employeeId = { $regex: employeeId as string, $options: "i" };
-    }
-    if (employeeName) {
+    if (employeeName)
       query.employeeName = { $regex: employeeName as string, $options: "i" };
-    }
 
     const payrolls = await Payroll.find(query).sort({ processedAt: -1 });
     res.json(payrolls);
@@ -103,30 +107,41 @@ export const getAllPayrolls = async (req: Request, res: Response) => {
 
 export const updatePayroll = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params; // payroll _id
+    const { id } = req.params;
+    const payroll = await Payroll.findById(id);
+    if (!payroll) return res.status(404).json({ message: "Payroll not found" });
+
+    if (payroll.isLocked)
+      return res
+        .status(403)
+        .json({ message: "Payroll is locked and cannot be updated" });
+
     const {
       employeeId,
       employeeName,
+      position,
       month,
       year,
+      presentDays,
+      approvedLeaves,
       basicSalary,
       allowances,
       deductions,
     } = req.body;
 
-    const payroll = await Payroll.findById(id);
-    if (!payroll) return res.status(404).json({ message: "Payroll not found" });
-
-    // Update payroll fields
+    // Update fields
     payroll.employeeId = employeeId ?? payroll.employeeId;
     payroll.employeeName = employeeName ?? payroll.employeeName;
+    payroll.position = position ?? payroll.position;
     payroll.month = month ?? payroll.month;
     payroll.year = year ?? payroll.year;
+    payroll.presentDays = presentDays ?? payroll.presentDays;
+    payroll.approvedLeaves = approvedLeaves ?? payroll.approvedLeaves;
     payroll.basicSalary = basicSalary ?? payroll.basicSalary;
     payroll.allowances = allowances ?? payroll.allowances;
     payroll.deductions = deductions ?? payroll.deductions;
 
-    // Recalculate total salary
+    // Recalculate salaries
     const totalAllowances =
       (payroll.allowances.medical || 0) +
       (payroll.allowances.transport || 0) +
@@ -136,23 +151,19 @@ export const updatePayroll = async (req: Request, res: Response) => {
       (payroll.deductions.loan || 0) +
       (payroll.deductions.advanceSalary || 0) +
       (payroll.deductions.tax || 0) +
-      (payroll.deductions.custom || 0);
+      (payroll.deductions.others || 0);
 
-    payroll.totalSalary =
-      payroll.basicSalary + totalAllowances - totalDeductions;
+    payroll.grossSalary = payroll.basicSalary + totalAllowances;
+    payroll.netPay = payroll.grossSalary - totalDeductions;
 
-    // Optionally regenerate salary slip if requested
+    // Regenerate salary slip if requested
     if (req.body.regenerateSalarySlip) {
       const salarySlipUrl = await generateSalarySlipPDF(payroll);
       payroll.salarySlipUrl = salarySlipUrl;
     }
 
     await payroll.save();
-
-    res.status(200).json({
-      message: "Payroll updated successfully",
-      payroll,
-    });
+    res.status(200).json({ message: "Payroll updated successfully", payroll });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
@@ -172,14 +183,11 @@ export const getEmployeePayrolls = async (req: Request, res: Response) => {
 
 export const generateSalarySlip = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params; // match the route param
+    const { id } = req.params;
     const payroll = await Payroll.findById(id);
     if (!payroll) return res.status(404).json({ message: "Payroll not found" });
 
-    // Generate PDF
     const salarySlipUrl = await generateSalarySlipPDF(payroll);
-
-    // Save URL in payroll
     payroll.salarySlipUrl = salarySlipUrl;
     await payroll.save();
 
@@ -194,11 +202,14 @@ export const generateSalarySlip = async (req: Request, res: Response) => {
 };
 
 export const downloadSalarySlip = async (req: Request, res: Response) => {
-  const payroll = await Payroll.findById(req.params.id);
-  if (!payroll || !payroll.salarySlipUrl) {
-    return res.status(404).json({ message: "Salary slip not found" });
-  }
+  try {
+    const payroll = await Payroll.findById(req.params.id);
+    if (!payroll || !payroll.salarySlipUrl)
+      return res.status(404).json({ message: "Salary slip not found" });
 
-  const filePath = path.join(process.cwd(), payroll.salarySlipUrl);
-  res.download(filePath);
+    const filePath = path.join(process.cwd(), payroll.salarySlipUrl);
+    res.download(filePath);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
 };
