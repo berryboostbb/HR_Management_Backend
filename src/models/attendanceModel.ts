@@ -1,12 +1,11 @@
 import mongoose, { Schema, Document } from "mongoose";
 
+// Define the interface for Attendance
 export interface IAttendance extends Document {
-  employeeId: string;
-  employeeName: string;
-  employeeRole: {
-    type: String;
-    required: true;
-    enum: ["Admin", "Office Staff", "Field Staff", "HR"];
+  employee: {
+    employeeId: string;
+    employeeName: string;
+    employeeRole: "Admin" | "Office Staff" | "Field Staff" | "HR";
   };
   checkIn?: {
     time: Date;
@@ -16,17 +15,28 @@ export interface IAttendance extends Document {
     time: Date;
     location: { lat: number; lng: number; address: string };
   };
+  break?: {
+    startTime: Date;
+    endTime?: Date;
+  };
   date: Date;
   status: "Present" | "Late" | "Absent" | "Half-day" | "On Leave";
-  locked?: boolean; // after payroll
-  reason?: string; // for manual edits
+  locked?: boolean;
+  reason?: string;
 }
 
+// Define the schema
 const AttendanceSchema: Schema<IAttendance> = new Schema(
   {
-    employeeId: { type: String, required: true },
-    employeeName: { type: String, required: true },
-    employeeRole: { type: String, required: true },
+    employee: {
+      employeeId: { type: String, required: true },
+      employeeName: { type: String, required: true },
+      employeeRole: {
+        type: String,
+        required: true,
+        enum: ["Admin", "Office Staff", "Field Staff", "HR"],
+      },
+    },
     checkIn: {
       time: { type: Date },
       location: {
@@ -43,13 +53,22 @@ const AttendanceSchema: Schema<IAttendance> = new Schema(
         address: { type: String },
       },
     },
+    break: {
+      startTime: { type: Date },
+      endTime: { type: Date },
+    },
     date: { type: Date, required: true },
-    status: { type: String, required: true },
+    status: {
+      type: String,
+      required: true,
+      enum: ["Present", "Late", "Absent", "Half-day", "On Leave"],
+    },
     locked: { type: Boolean, default: false },
     reason: { type: String },
   },
-  { timestamps: true }
+  { timestamps: true } // This will automatically add createdAt and updatedAt timestamps
 );
 
+// Create the model
 const Attendance = mongoose.model<IAttendance>("Attendance", AttendanceSchema);
 export default Attendance;
