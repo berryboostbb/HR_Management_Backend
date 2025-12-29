@@ -18,8 +18,8 @@ export const registerSchema = Joi.object({
     "string.pattern.base": "Phone number must be 10-15 digits",
   }),
   password: Joi.string().min(6).required(),
-  designation: Joi.string().required(),
-  employeeRole: Joi.string()
+  role: Joi.string().required(),
+  employeeType: Joi.string()
     .valid("Admin", "Office Staff", "Field Staff", "HR")
     .trim()
     .required(),
@@ -62,9 +62,9 @@ export const updateUserSchema = Joi.object({
   }),
 
   image: Joi.string(),
-  designation: Joi.string(),
+  role: Joi.string(),
 
-  employeeRole: Joi.string().valid(
+  employeeType: Joi.string().valid(
     "Admin",
     "Office Staff",
     "Field Staff",

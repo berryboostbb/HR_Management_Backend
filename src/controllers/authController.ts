@@ -27,8 +27,8 @@ export const register = async (req: Request, res: Response) => {
       email,
       password,
       gender,
-      designation,
-      employeeRole,
+      role,
+      employeeType,
       joiningDate,
       phoneNumber,
       salaryStructure,
@@ -44,14 +44,14 @@ export const register = async (req: Request, res: Response) => {
     if (exists) return res.status(400).json({ message: "User already exists" });
 
     // Generate Employee ID
-    const employeeId = generateEmployeeId(employeeRole);
+    const employeeId = generateEmployeeId(employeeType);
     const user = await User.create({
       name,
       email,
       password,
       gender,
-      designation,
-      employeeRole,
+      role,
+      employeeType,
       department,
       joiningDate,
       phoneNumber,
@@ -156,7 +156,7 @@ export const getTodayBirthdays = async (req: Request, res: Response) => {
     const todayMonth = today.getMonth() + 1;
 
     const allUsers = await User.find().select(
-      "name email employeeId designation department image DOB employeeRole"
+      "name email employeeId role department image DOB employeeType"
     );
 
     const birthdays = allUsers.filter((user) => {
