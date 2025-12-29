@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import User from "../models/userModel";
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+import JWTService from "../services/JWTServices";
+dotenv.config();
 
 const generateToken = (id: string) => {
   return jwt.sign({ id }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "1d" });
@@ -23,12 +26,13 @@ export const register = async (req: Request, res: Response) => {
       name,
       email,
       password,
+      gender,
       designation,
       employeeRole,
       joiningDate,
       phoneNumber,
       salaryStructure,
-      loanPF, // corrected
+      loanPF,
       DOB,
       image,
       employeeStatus,
@@ -39,22 +43,30 @@ export const register = async (req: Request, res: Response) => {
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: "User already exists" });
 
+    // Generate Employee ID
     const employeeId = generateEmployeeId(employeeRole);
     const user = await User.create({
       name,
       email,
       password,
+      gender,
       designation,
       employeeRole,
       department,
       joiningDate,
       phoneNumber,
       salaryStructure,
-      loanPF, // pass loanPF object here
+      loanPF,
       DOB,
       image,
       employeeStatus,
-      leaveEntitlements,
+      leaveEntitlements: {
+        casualLeave: leaveEntitlements?.casualLeave ?? 0,
+        sickLeave: leaveEntitlements?.sickLeave ?? 0,
+        annualLeave: leaveEntitlements?.annualLeave ?? 0,
+        maternityLeave: leaveEntitlements?.maternityLeave ?? 0,
+        paternityLeave: leaveEntitlements?.paternityLeave ?? 0,
+      },
       employeeId,
     });
 

@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import dbConnect from "../src/database"; // adjust path
+import dbConnect from "../src/database";
 import authRouter from "../src/routes/authRoutes";
 import attendanceRouter from "../src/routes/attendanceRoutes";
 import leaveRouter from "../src/routes/leavesRoutes";
@@ -13,7 +13,6 @@ dotenv.config();
 
 const app = express();
 
-// Middlewares
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -32,14 +31,12 @@ app.use(
   })
 );
 
-// DB connection per request
 import mongoose from "mongoose";
 async function ensureDBConnection() {
-  if (mongoose.connection.readyState === 1) return; // already connected
+  if (mongoose.connection.readyState === 1) return;
   await dbConnect();
 }
 
-// Routes wrapper
 app.use(async (req, res, next) => {
   try {
     await ensureDBConnection();
@@ -50,7 +47,6 @@ app.use(async (req, res, next) => {
   }
 });
 
-// Routes
 app.get("/", (_req, res) => {
   res.status(200).json({ message: "Backend running on Vercel Serverless!" });
 });
@@ -62,5 +58,4 @@ app.use("/payroll", payrollRouter);
 app.use("/upload", uploadFileRoutes);
 app.use("/events", eventsRoutes);
 
-// ✅ Export app for Vercel
 export default app;

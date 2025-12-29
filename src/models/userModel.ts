@@ -19,11 +19,19 @@ interface ILoanPF {
   loan: number;
   pf: number;
 }
+interface ILeaveEntitlements {
+  casualLeave: number;
+  sickLeave: number;
+  annualLeave: number;
+  maternityLeave: number;
+  paternityLeave: number;
+}
 
 export interface IUser extends Document {
   employeeId: string;
   name: string;
   designation: string;
+  gender: string;
   department: string;
   employeeRole: string;
   phoneNumber: string;
@@ -33,7 +41,7 @@ export interface IUser extends Document {
   DOB: Date;
   image: string;
   employeeStatus: string;
-  leaveEntitlements: string[];
+  leaveEntitlements: ILeaveEntitlements;
   email: string;
   password: string;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -45,6 +53,7 @@ const generateEmployeeId = (): string =>
 const UserSchema: Schema<IUser> = new Schema(
   {
     employeeId: { type: String, default: generateEmployeeId, unique: true },
+    gender: { type: String, required: true },
     name: { type: String, required: true },
     image: { type: String, required: true },
     phoneNumber: { type: String, required: true },
@@ -73,7 +82,14 @@ const UserSchema: Schema<IUser> = new Schema(
     },
     DOB: { type: Date, required: true },
     employeeStatus: { type: String, required: true },
-    leaveEntitlements: [{ type: String, required: true }],
+    leaveEntitlements: {
+      casualLeave: { type: Number, default: 0 },
+      sickLeave: { type: Number, default: 0 },
+      annualLeave: { type: Number, default: 0 },
+      maternityLeave: { type: Number, default: 0 },
+      paternityLeave: { type: Number, default: 0 },
+    },
+
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
   },
