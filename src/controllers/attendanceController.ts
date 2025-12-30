@@ -9,6 +9,7 @@ export const checkIn = async (req: Request, res: Response) => {
   try {
     // Extract the token from the Authorization header
     const token = req.headers.authorization?.split(" ")[1]; // "Bearer <token>"
+    console.log("🚀 ~ checkIn ~ token:", token);
 
     if (!token) {
       return res

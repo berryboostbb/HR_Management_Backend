@@ -5,7 +5,7 @@ export interface IAttendance extends Document {
   employee: {
     employeeId: string;
     employeeName: string;
-    employeeRole: "Admin" | "Office Staff" | "Field Staff" | "HR";
+    employeeRole: string;
   };
   checkIn?: {
     time: Date;
@@ -34,7 +34,6 @@ const AttendanceSchema: Schema<IAttendance> = new Schema(
       employeeRole: {
         type: String,
         required: true,
-        enum: ["Admin", "Office Staff", "Field Staff", "HR"],
       },
     },
     checkIn: {
