@@ -502,19 +502,23 @@ export const getUserAttendanceStatus = async (req: Request, res: Response) => {
     // Verify and decode the token
     const decodedToken = JWTService.verifyAccessToken(token);
     const employeeId = decodedToken._id; // Assuming _id is stored in the token payload
-    //change
+
     if (!employeeId) {
       return res.status(400).json({ message: "User not authenticated" });
     }
 
-    // Get today's date (ignore time)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set the time to 00:00:00 for comparison
+    // Get today's date (ignore time) - Start of the day (midnight)
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0); // Set the time to 00:00:00 for comparison
+
+    // Get tomorrow's date (start of the next day)
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(todayStart.getDate() + 1); // Set to the next day's midnight
 
     // Fetch the user's attendance record for today
     const attendance = await Attendance.findOne({
       "employee._id": employeeId,
-      date: today,
+      date: { $gte: todayStart, $lt: tomorrowStart }, // Use $gte and $lt to match today's date range
     });
 
     if (!attendance) {
