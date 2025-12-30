@@ -5,6 +5,7 @@ import {
   getAllAttendance,
   editAttendance,
   getAttendanceSummary,
+  getUserAttendanceStatus,
 } from "../controllers/attendanceController";
 
 import {
@@ -13,10 +14,11 @@ import {
   checkOutSchema,
   editAttendanceSchema,
 } from "../validations/attendanceValidation";
+import auth from "../middleware/auth";
 
 const router = express.Router();
 
-router.post("/checkin", validateBody(checkInSchema), checkIn);
+router.post("/checkin", auth, checkIn);
 router.post("/checkout", validateBody(checkOutSchema), checkOut);
 router.get("/getAllAttendance", getAllAttendance);
 router.get("/getAttendanceSummary", getAttendanceSummary);
@@ -26,5 +28,7 @@ router.put(
   validateBody(editAttendanceSchema),
   editAttendance
 );
+
+router.get("/attendance/status", auth, getUserAttendanceStatus);
 
 export default router;

@@ -38,14 +38,12 @@ class JWTService {
   // Store refresh token in DB
   static async storeRefreshToken(
     token: string,
-    userId?: Types.ObjectId,
-    adminId?: Types.ObjectId
+    userId?: Types.ObjectId
   ): Promise<void> {
     try {
       const newToken = new RefreshToken({
         token,
         userId,
-        adminId,
       });
 
       await newToken.save();
@@ -57,14 +55,12 @@ class JWTService {
   // Store access token in DB
   static async storeAccessToken(
     token: string,
-    userId?: Types.ObjectId,
-    adminId?: Types.ObjectId
+    userId?: Types.ObjectId
   ): Promise<void> {
     try {
       const newToken = new AccessToken({
         token,
         userId,
-        adminId,
       });
 
       await newToken.save();

@@ -30,10 +30,10 @@ interface ILeaveEntitlements {
 export interface IUser extends Document {
   employeeId: string;
   name: string;
-  designation: string;
+  role: string;
   gender: string;
   department: string;
-  employeeRole: string;
+  employeeType: string;
   phoneNumber: string;
   joiningDate: Date;
   salaryStructure: ISalaryStructure;
@@ -57,11 +57,10 @@ const UserSchema: Schema<IUser> = new Schema(
     name: { type: String, required: true },
     image: { type: String, required: true },
     phoneNumber: { type: String, required: true },
-    designation: { type: String, required: true },
-    employeeRole: {
+    role: { type: String, required: true },
+    employeeType: {
       type: String,
       required: true,
-      enum: ["Admin", "Office Staff", "Field Staff", "HR"],
     },
     department: { type: String, required: true },
     joiningDate: { type: Date, required: true },

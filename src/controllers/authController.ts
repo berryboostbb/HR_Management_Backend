@@ -20,6 +20,83 @@ const generateEmployeeId = (role: string) => {
   return `${rolePart}${numberPart}${letterPart}`;
 };
 
+// export const register = async (req: Request, res: Response) => {
+//   try {
+//     const {
+//       name,
+//       email,
+//       password,
+//       gender,
+//       role,
+//       employeeType,
+//       joiningDate,
+//       phoneNumber,
+//       salaryStructure,
+//       loanPF,
+//       DOB,
+//       image,
+//       employeeStatus,
+//       leaveEntitlements,
+//       department,
+//     } = req.body;
+
+//     const exists = await User.findOne({ email });
+//     if (exists) return res.status(400).json({ message: "User already exists" });
+
+//     // Generate Employee ID
+//     const employeeId = generateEmployeeId(employeeType);
+//     const user = await User.create({
+//       name,
+//       email,
+//       password,
+//       gender,
+//       role,
+//       employeeType,
+//       department,
+//       joiningDate,
+//       phoneNumber,
+//       salaryStructure,
+//       loanPF,
+//       DOB,
+//       image,
+//       employeeStatus,
+//       leaveEntitlements: {
+//         casualLeave: leaveEntitlements?.casualLeave ?? 0,
+//         sickLeave: leaveEntitlements?.sickLeave ?? 0,
+//         annualLeave: leaveEntitlements?.annualLeave ?? 0,
+//         maternityLeave: leaveEntitlements?.maternityLeave ?? 0,
+//         paternityLeave: leaveEntitlements?.paternityLeave ?? 0,
+//       },
+//       employeeId,
+//     });
+
+//     res.status(201).json({ user, token: generateToken(user._id.toString()) });
+//   } catch (error) {
+//     res.status(500).json({ message: "Server error", error });
+//   }
+// };
+
+// Login
+// export const login = async (req: Request, res: Response) => {
+//   try {
+//     const { email, password } = req.body;
+//     const user = await User.findOne({ email });
+//     if (!user) return res.status(400).json({ message: "Invalid credentials" });
+
+//     const isMatch = await user.comparePassword(password);
+//     console.log("🚀 ~ login ~ isMatch:", isMatch);
+//     if (!isMatch) {
+//       return res.status(400).json({ message: "Invalid credentials" });
+//     } else {
+//       res.json({ user, token: generateToken(user._id.toString()) });
+//     }
+//   } catch (error) {
+//     res.status(500).json({ message: "Server error", error });
+//   }
+// };
+
+// Get all Users
+
 export const register = async (req: Request, res: Response) => {
   try {
     const {
@@ -27,8 +104,8 @@ export const register = async (req: Request, res: Response) => {
       email,
       password,
       gender,
-      designation,
-      employeeRole,
+      role,
+      employeeType,
       joiningDate,
       phoneNumber,
       salaryStructure,
@@ -44,14 +121,14 @@ export const register = async (req: Request, res: Response) => {
     if (exists) return res.status(400).json({ message: "User already exists" });
 
     // Generate Employee ID
-    const employeeId = generateEmployeeId(employeeRole);
+    const employeeId = generateEmployeeId(employeeType);
     const user = await User.create({
       name,
       email,
       password,
       gender,
-      designation,
-      employeeRole,
+      role,
+      employeeType,
       department,
       joiningDate,
       phoneNumber,
@@ -70,7 +147,16 @@ export const register = async (req: Request, res: Response) => {
       employeeId,
     });
 
-    res.status(201).json({ user, token: generateToken(user._id.toString()) });
+    // Generate access token
+    const token = JWTService.signAccessToken(
+      { _id: user._id.toString() },
+      "1d"
+    );
+
+    // Store the token in the database
+    await JWTService.storeAccessToken(token, user._id);
+
+    res.status(201).json({ user, token });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }
@@ -84,18 +170,25 @@ export const login = async (req: Request, res: Response) => {
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
     const isMatch = await user.comparePassword(password);
-    console.log("🚀 ~ login ~ isMatch:", isMatch);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
     } else {
-      res.json({ user, token: generateToken(user._id.toString()) });
+      // Generate access token
+      const token = JWTService.signAccessToken(
+        { _id: user._id.toString() },
+        "1d"
+      );
+
+      // Store the token in the database
+      await JWTService.storeAccessToken(token, user._id);
+
+      res.json({ user, token });
     }
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }
 };
 
-// Get all Users
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const { search } = req.query;
@@ -156,7 +249,7 @@ export const getTodayBirthdays = async (req: Request, res: Response) => {
     const todayMonth = today.getMonth() + 1;
 
     const allUsers = await User.find().select(
-      "name email employeeId designation department image DOB employeeRole"
+      "name email employeeId role department image DOB employeeType"
     );
 
     const birthdays = allUsers.filter((user) => {

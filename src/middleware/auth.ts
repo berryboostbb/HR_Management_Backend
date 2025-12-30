@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import AccessToken from "../models/accessToken";
-import Admin from "../models/userModel";
 import JWTService from "../services/JWTServices";
+import User from "../models/userModel";
 
 declare module "express" {
   export interface Request {
@@ -12,7 +12,7 @@ declare module "express" {
 
 // Define a mapping between route segments and Mongoose models (admin in this case)
 const modelMap: Record<string, mongoose.Model<any>> = {
-  admin: Admin, // Only admin should access /admin/* routes
+  user: User, // Only admin should access /admin/* routes
 };
 
 // Middleware
@@ -22,7 +22,7 @@ const auth = async (req: Request, res: Response, next: NextFunction) => {
     const accessToken = authHeader?.split(" ")[1];
 
     // Skip auth check for public routes if needed
-    const publicRoutes = ["/admin/login", "/admin/register"];
+    const publicRoutes = ["/user/login", "/user/register"];
     if (publicRoutes.includes(req.originalUrl)) {
       return next();
     }
@@ -56,9 +56,9 @@ const auth = async (req: Request, res: Response, next: NextFunction) => {
     }
 
     // Allow logout route without role check
-    const excludedRoutes = ["/admin/logout"];
+    const excludedRoutes = ["/user/logout"];
     if (excludedRoutes.includes(req.originalUrl)) {
-      req.user = await Admin.findById(payload._id);
+      req.user = await User.findById(payload._id);
       return next();
     }
 
@@ -67,8 +67,12 @@ const auth = async (req: Request, res: Response, next: NextFunction) => {
     const routePath = segments[0]; // e.g., "api" or "admin"
 
     let model: mongoose.Model<any>;
-    if (routePath === "api" || routePath === "admin") {
-      model = modelMap.admin; // only admin allowed
+    if (
+      routePath === "api" ||
+      routePath === "user" ||
+      routePath === "attendance"
+    ) {
+      model = modelMap.user; // only user allowed
     } else {
       return next({
         status: 403,

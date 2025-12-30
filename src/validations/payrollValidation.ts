@@ -6,9 +6,12 @@ const objectId = Joi.string().hex().length(24);
 export const payrollSchema = Joi.object({
   employeeId: Joi.string().required(),
   employeeName: Joi.string().required(),
+  position: Joi.string().allow("").optional(),
   month: Joi.string().trim().required(),
-
   year: Joi.number().integer().min(2000).max(2100).required(),
+
+  presentDays: Joi.number().min(0).default(0),
+  approvedLeaves: Joi.number().min(0).default(0),
 
   basicSalary: Joi.number().min(0).required(),
 
@@ -27,20 +30,34 @@ export const payrollSchema = Joi.object({
     loan: Joi.number().min(0).default(0),
     advanceSalary: Joi.number().min(0).default(0),
     tax: Joi.number().min(0).default(0),
-    custom: Joi.number().min(0).default(0),
+    others: Joi.number().min(0).default(0),
   }).default({
     pf: 0,
     loan: 0,
     advanceSalary: 0,
     tax: 0,
-    custom: 0,
+    others: 0,
   }),
+
+  grossSalary: Joi.number().min(0).required(),
+  netPay: Joi.number().min(0).required(),
+
+  payrollStatus: Joi.string()
+    .valid("Pending", "Processed", "Approved")
+    .default("Pending"),
+
+  approvedBy: objectId.optional(),
+  isLocked: Joi.boolean().default(false),
+  processedAt: Joi.date().optional(),
+  salarySlipUrl: Joi.string().uri().optional(),
 });
 
+// For approving payroll
 export const approvePayrollSchema = Joi.object({
   approvedBy: objectId.required(),
 });
 
+// Middleware
 export const validateBody =
   (schema: Joi.ObjectSchema) =>
   (req: Request, res: Response, next: NextFunction) => {

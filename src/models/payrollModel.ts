@@ -5,7 +5,7 @@ interface IDeductions {
   loan: number;
   advanceSalary: number;
   tax: number;
-  custom: number;
+  others: number;
 }
 
 interface IAllowances {
@@ -19,87 +19,59 @@ export interface IPayroll extends Document {
   employeeName: string;
   month: string; // e.g. "December"
   year: number; // e.g. 2025
+  position?: string; // Employee position
+  presentDays: number;
+  approvedLeaves: number;
   basicSalary: number;
   allowances: IAllowances;
   deductions: IDeductions;
-  totalSalary: number;
-  approvedBy?: Types.ObjectId; // optional approver
+  grossSalary: number;
+  netPay: number;
+  payrollStatus: "Pending" | "Processed" | "Approved";
+  approvedBy?: Types.ObjectId;
   isLocked: boolean;
   processedAt: Date;
-  salarySlipUrl?: string; // optional salary slip
+  salarySlipUrl?: string;
 }
 
 const PayrollSchema = new Schema<IPayroll>(
   {
-    employeeId: {
-      type: String,
-      required: true,
-      index: true, // good for search
-    },
-
-    employeeName: {
-      type: String,
-      required: true,
-      index: true, // good for search
-    },
-
-    month: {
-      type: String,
-      required: true,
-    },
-
-    year: {
-      type: Number,
-      required: true,
-    },
-
-    basicSalary: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-
+    employeeId: { type: String, required: true, index: true },
+    employeeName: { type: String, required: true, index: true },
+    position: { type: String, default: "" },
+    month: { type: String, required: true },
+    year: { type: Number, required: true },
+    presentDays: { type: Number, default: 0, min: 0 },
+    approvedLeaves: { type: Number, default: 0, min: 0 },
+    basicSalary: { type: Number, required: true, min: 0 },
     allowances: {
-      medical: { type: Number, default: 0 },
-      transport: { type: Number, default: 0 },
-      others: { type: Number, default: 0 },
+      medical: { type: Number, default: 0, min: 0 },
+      transport: { type: Number, default: 0, min: 0 },
+      others: { type: Number, default: 0, min: 0 },
     },
-
     deductions: {
-      pf: { type: Number, default: 0 },
-      loan: { type: Number, default: 0 },
-      advanceSalary: { type: Number, default: 0 },
-      tax: { type: Number, default: 0 },
-      custom: { type: Number, default: 0 },
+      pf: { type: Number, default: 0, min: 0 },
+      loan: { type: Number, default: 0, min: 0 },
+      advanceSalary: { type: Number, default: 0, min: 0 },
+      tax: { type: Number, default: 0, min: 0 },
+      others: { type: Number, default: 0, min: 0 },
     },
-
-    totalSalary: {
-      type: Number,
-      required: true,
-    },
-
-    approvedBy: {
-      type: Schema.Types.ObjectId,
-      ref: "User", // optional approver, keep if you have User model
-    },
-
-    isLocked: {
-      type: Boolean,
-      default: false,
-    },
-
-    processedAt: {
-      type: Date,
-      default: Date.now,
-    },
-
-    salarySlipUrl: {
+    grossSalary: { type: Number, required: true, min: 0 }, // basic + allowances
+    netPay: { type: Number, required: true, min: 0 }, // gross - deductions
+    payrollStatus: {
       type: String,
+      enum: ["Pending", "Processed", "Approved"],
+      default: "Pending",
     },
+    approvedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    isLocked: { type: Boolean, default: false },
+    processedAt: { type: Date, default: Date.now },
+    salarySlipUrl: { type: String },
   },
   { timestamps: true }
 );
 
+// Unique constraint per employee per month/year
 PayrollSchema.index({ employeeId: 1, month: 1, year: 1 }, { unique: true });
 
 const Payroll = mongoose.model<IPayroll>("Payroll", PayrollSchema);

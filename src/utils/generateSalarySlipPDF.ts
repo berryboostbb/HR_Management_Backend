@@ -96,7 +96,7 @@ export const generateSalarySlipPDF = async (
     { title: "Loan", amount: payroll.deductions.loan },
     { title: "Advance Salary", amount: payroll.deductions.advanceSalary },
     { title: "Tax", amount: payroll.deductions.tax },
-    { title: "Other", amount: payroll.deductions.custom },
+    { title: "Other", amount: payroll.deductions.others },
   ];
 
   deductions.forEach((item) => {
@@ -118,7 +118,7 @@ export const generateSalarySlipPDF = async (
     width: tableWidth / 2,
     align: "left",
   });
-  doc.text(payroll.totalSalary.toFixed(2), startX + tableWidth / 2, startY, {
+  doc.text(payroll.netPay.toFixed(2), startX + tableWidth / 2, startY, {
     width: tableWidth / 2,
     align: "right",
   });

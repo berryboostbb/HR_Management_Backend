@@ -4,6 +4,8 @@ import {
   updateLeaveStatus,
   getAllLeaves,
   getEmployeeLeaves,
+  deleteLeave,
+  updateLeave,
 } from "../controllers/leavesController";
 
 import {
@@ -19,7 +21,11 @@ router.put(
   validateBody(leaveStatusSchema),
   updateLeaveStatus
 );
+router.delete("/deleteLeave/:id", deleteLeave);
+
 router.get("/getAllLeaves", getAllLeaves);
+router.put("/updateLeave/:id", updateLeave);
+
 router.get("/employee/:employeeId", getEmployeeLeaves);
 
 export default router;
