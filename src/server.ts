@@ -21,7 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 // CORS
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://medi-rep-front-end.vercel.app",
+  "https://hr-management-dashboard-ten.vercel.app",
 ];
 app.use(
   cors({
