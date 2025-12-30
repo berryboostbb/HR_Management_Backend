@@ -507,13 +507,18 @@ export const getUserAttendanceStatus = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "User not authenticated" });
     }
 
-    // Get today's date (ignore time) - Start of the day (midnight)
+    // Get today's date in UTC (ignore time) - Start of the day (midnight)
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0); // Set the time to 00:00:00 for comparison
+    todayStart.setUTCSeconds(0, 0); // Make sure it is set in UTC
 
-    // Get tomorrow's date (start of the next day)
+    // Get tomorrow's date in UTC (start of the next day)
     const tomorrowStart = new Date(todayStart);
-    tomorrowStart.setDate(todayStart.getDate() + 1); // Set to the next day's midnight
+    tomorrowStart.setDate(todayStart.getDate() + 1); // Set to the next day's midnight in UTC
+    tomorrowStart.setUTCSeconds(0, 0); // Make sure it is set in UTC
+
+    console.log("🚀 ~ getUserAttendanceStatus ~ todayStart:", todayStart);
+    console.log("🚀 ~ getUserAttendanceStatus ~ tomorrowStart:", tomorrowStart);
 
     // Fetch the user's attendance record for today
     const attendance = await Attendance.findOne({
