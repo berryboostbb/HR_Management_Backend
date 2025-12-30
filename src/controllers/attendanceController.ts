@@ -4,7 +4,137 @@ import Account from "../models/userModel";
 import JWTService from "../services/JWTServices";
 import User from "../models/userModel";
 
+// Function to create daily attendance records with status "Absent"
+export const createDailyAttendance = async (req: Request, res: Response) => {
+  try {
+    const employees = await User.find(); // Get all employees
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set the time to 00:00 for today
+
+    // Use for...of to properly handle async operations
+    for (const employee of employees) {
+      const existingAttendance = await Attendance.findOne({
+        "employee.employeeId": employee.employeeId,
+        date: today,
+      });
+
+      if (!existingAttendance) {
+        // Create a new attendance record with "Absent" status
+        const newAttendance = new Attendance({
+          employee: {
+            _id: employee._id,
+            employeeId: employee.employeeId,
+            employeeName: employee.name,
+            employeeRole: employee.role,
+            employeeType: employee.employeeType, // Add the missing employeeType
+          },
+          date: today,
+          status: "Absent", // Default to "Absent"
+          checkInStatus: "Pending", // Default to "CheckedOut"
+        });
+
+        await newAttendance.save(); // Ensure the save operation completes before moving to the next employee
+      }
+    }
+
+    // After the loop finishes, send the response back to the client
+    console.log("Attendance records created for today.");
+    res.json({ message: "Attendance records successfully created for today." });
+  } catch (error) {
+    console.error("Error creating daily attendance records:", error);
+    res
+      .status(500)
+      .json({ message: "Error creating attendance records", error });
+  }
+};
+
 // Check-In
+// export const checkIn = async (req: Request, res: Response) => {
+//   try {
+//     // Extract the token from the Authorization header
+//     const token = req.headers.authorization?.split(" ")[1]; // "Bearer <token>"
+
+//     if (!token) {
+//       return res
+//         .status(400)
+//         .json({ message: "Authorization token is missing" });
+//     }
+
+//     // Verify and decode the token to get user details
+//     const decodedToken = JWTService.verifyAccessToken(token);
+
+//     // Extract user details from the decoded token
+//     const loggedInUserId = decodedToken._id; // Get the logged-in user ID from the token
+
+//     // Get the user from the database using the logged-in userId
+//     const loggedInUser = await User.findById(loggedInUserId); // Assuming User model has a findById method
+
+//     if (!loggedInUser) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     // Check if the logged-in user is an admin
+//     const isAdmin = loggedInUser.role === "admin"; // Assuming 'role' field determines user type
+
+//     // Determine the employeeId: if logged-in user is admin, use the employeeId from the request body, otherwise use the logged-in user ID
+//     const employeeId = isAdmin ? req.body.employeeId : loggedInUser.employeeId;
+
+//     // Get today's date (ignore time)
+//     const today = new Date();
+//     today.setHours(0, 0, 0, 0); // Set the time to 00:00:00 for comparison
+
+//     // Check if attendance already exists for today
+//     const existingAttendance = await Attendance.findOne({
+//       "employee.employeeId": employeeId, // Use employeeId for searching
+//       date: today,
+//     });
+
+//     // If attendance already exists and the user has checked in, return a response
+//     if (existingAttendance?.checkIn) {
+//       return res.status(400).json({ message: "Already checked in today" });
+//     }
+
+//     // Create a new attendance record or use the existing one
+//     const attendance =
+//       existingAttendance ||
+//       new Attendance({
+//         employee: {
+//           _id: loggedInUser._id,
+//           employeeId: loggedInUser.employeeId,
+//           employeeName: loggedInUser.name, // Assuming 'name' field is present in User model
+//           employeeRole: loggedInUser.role, // Assuming 'role' field is present in User model
+//           employeeType: loggedInUser.employeeType, // Assuming 'employeeType' field is present in User model
+//         },
+//         date: today,
+//         status: "Present", // Default status
+//         checkInStatus: "CheckedIn", // Set checkInStatus to CheckedIn
+//       });
+
+//     // Get location data from the request body
+//     const { location } = req.body;
+
+//     // Log check-in time and location
+//     attendance.checkIn = {
+//       time: new Date(),
+//       location,
+//     };
+
+//     // Save the attendance record
+//     await attendance.save();
+
+//     res.json({
+//       message: `Checked in successfully ${
+//         isAdmin ? `for employee ${employeeId}` : ""
+//       }`,
+//       attendance,
+//     });
+//   } catch (error) {
+//     console.error("Error in checkIn:", error);
+//     res.status(500).json({ message: "Server error", error });
+//   }
+// };
+
 export const checkIn = async (req: Request, res: Response) => {
   try {
     // Extract the token from the Authorization header
@@ -40,20 +170,20 @@ export const checkIn = async (req: Request, res: Response) => {
     today.setHours(0, 0, 0, 0); // Set the time to 00:00:00 for comparison
 
     // Check if attendance already exists for today
-    const existingAttendance = await Attendance.findOne({
-      "employee.employeeId": employeeId, // Use employeeId for searching
+    let attendance = await Attendance.findOne({
+      "employee.employeeId": employeeId,
       date: today,
     });
+    console.log("🚀 ~ checkIn ~ attendance:", attendance);
 
     // If attendance already exists and the user has checked in, return a response
-    if (existingAttendance?.checkIn) {
+    if (attendance?.checkInStatus === "CheckedIn") {
       return res.status(400).json({ message: "Already checked in today" });
     }
 
-    // Create a new attendance record or use the existing one
-    const attendance =
-      existingAttendance ||
-      new Attendance({
+    // If attendance doesn't exist, create a new one
+    if (!attendance) {
+      attendance = new Attendance({
         employee: {
           _id: loggedInUser._id,
           employeeId: loggedInUser.employeeId,
@@ -62,9 +192,14 @@ export const checkIn = async (req: Request, res: Response) => {
           employeeType: loggedInUser.employeeType, // Assuming 'employeeType' field is present in User model
         },
         date: today,
-        status: "Present", // Default status
-        checkInStatus: "CheckedIn", // Set checkInStatus to CheckedIn
+        status: "Absent", // Default status
+        checkInStatus: "CheckedOut", // Default to "CheckedOut" since they haven't checked in yet
       });
+    }
+
+    // If the attendance exists and hasn't been checked in, we update it
+    attendance.checkInStatus = "CheckedIn"; // Set checkInStatus to "CheckedIn" when employee checks in
+    attendance.status = "Present"; // Update status to "Present" once they check in
 
     // Get location data from the request body
     const { location } = req.body;
@@ -75,9 +210,10 @@ export const checkIn = async (req: Request, res: Response) => {
       location,
     };
 
-    // Save the attendance record
+    // Save the attendance record (whether it's updated or newly created)
     await attendance.save();
 
+    // Return success message
     res.json({
       message: `Checked in successfully ${
         isAdmin ? `for employee ${employeeId}` : ""

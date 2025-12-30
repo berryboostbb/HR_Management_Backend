@@ -25,7 +25,7 @@ export interface IAttendance extends Document {
   status: "Present" | "Late" | "Absent" | "Half-day" | "On Leave";
   locked?: boolean;
   reason?: string;
-  checkInStatus?: "CheckedIn" | "OnBreak" | "CheckedOut"; // Add this field
+  checkInStatus?: "Pending" | "CheckedIn" | "OnBreak" | "CheckedOut"; // Add this field
 }
 
 // Define the schema
@@ -72,8 +72,8 @@ const AttendanceSchema: Schema<IAttendance> = new Schema(
     reason: { type: String },
     checkInStatus: {
       type: String,
-      enum: ["CheckedIn", "OnBreak", "CheckedOut"],
-      default: "CheckedOut", // Default to "CheckedOut" when not checked in
+      enum: ["Pending", "CheckedIn", "OnBreak", "CheckedOut"],
+      default: "Pending", // Default to "Pending" when not checked in
     },
   },
   { timestamps: true }

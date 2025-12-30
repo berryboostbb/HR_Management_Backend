@@ -8,6 +8,7 @@ import {
   getUserAttendanceStatus,
   startBreak,
   endBreak,
+  createDailyAttendance,
 } from "../controllers/attendanceController";
 
 import {
@@ -34,5 +35,7 @@ router.put(
 );
 
 router.get("/status", auth, getUserAttendanceStatus);
+
+router.post("/createDailyAttendance", auth, createDailyAttendance);
 
 export default router;
