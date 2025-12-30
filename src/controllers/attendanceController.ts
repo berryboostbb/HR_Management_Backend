@@ -59,6 +59,7 @@ export const checkIn = async (req: Request, res: Response) => {
           employeeId: loggedInUser.employeeId,
           employeeName: loggedInUser.name, // Assuming 'name' field is present in User model
           employeeRole: loggedInUser.role, // Assuming 'role' field is present in User model
+          employeeType: loggedInUser.employeeType, // Assuming 'employeeType' field is present in User model
         },
         date: today,
         status: "Present", // Default status

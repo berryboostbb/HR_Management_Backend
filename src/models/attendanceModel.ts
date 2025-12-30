@@ -7,14 +7,15 @@ export interface IAttendance extends Document {
     employeeId: string;
     employeeName: string;
     employeeRole: string;
+    employeeType: string;
   };
   checkIn?: {
     time: Date;
-    location: { lat: number; lng: number; address: string };
+    location: { lat: number; lng: number };
   };
   checkOut?: {
     time: Date;
-    location: { lat: number; lng: number; address: string };
+    location: { lat: number; lng: number };
   };
   break?: {
     startTime: Date;
@@ -38,13 +39,16 @@ const AttendanceSchema: Schema<IAttendance> = new Schema(
         type: String,
         required: true,
       },
+      employeeType: {
+        type: String,
+        required: true,
+      },
     },
     checkIn: {
       time: { type: Date },
       location: {
         lat: { type: Number },
         lng: { type: Number },
-        address: { type: String },
       },
     },
     checkOut: {
@@ -52,7 +56,6 @@ const AttendanceSchema: Schema<IAttendance> = new Schema(
       location: {
         lat: { type: Number },
         lng: { type: Number },
-        address: { type: String },
       },
     },
     break: {
