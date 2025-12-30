@@ -71,18 +71,15 @@ export const generatePayroll = async (req: Request, res: Response) => {
 
 export const approvePayroll = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const { approvedBy } = req.body;
+    const { id } = req.params; // Payroll ID from URL
 
     const payroll = await Payroll.findById(id);
     if (!payroll) return res.status(404).json({ message: "Payroll not found" });
-
-    payroll.approvedBy = approvedBy;
-    payroll.isLocked = true;
     payroll.payrollStatus = "Approved";
 
     await payroll.save();
-    res.json({ message: "Payroll approved and locked", payroll });
+
+    res.json({ message: "Payroll approved successfully", payroll });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }
@@ -90,13 +87,15 @@ export const approvePayroll = async (req: Request, res: Response) => {
 
 export const getAllPayrolls = async (req: Request, res: Response) => {
   try {
-    const { employeeId, employeeName } = req.query;
+    const { employeeId, employeeName, month, year } = req.query;
     const query: any = {};
 
     if (employeeId)
       query.employeeId = { $regex: employeeId as string, $options: "i" };
     if (employeeName)
       query.employeeName = { $regex: employeeName as string, $options: "i" };
+    if (month) query.month = month as string;
+    if (year) query.year = Number(year);
 
     const payrolls = await Payroll.find(query).sort({ processedAt: -1 });
     res.json(payrolls);

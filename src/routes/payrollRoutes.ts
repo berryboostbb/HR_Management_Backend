@@ -19,7 +19,7 @@ const router = express.Router();
 
 router.post("/generatePayroll", validateBody(payrollSchema), generatePayroll);
 
-router.put("/approve/:id", validateBody(approvePayrollSchema), approvePayroll);
+router.put("/approve/:id", approvePayroll);
 
 router.get("/getAllPayrolls", getAllPayrolls);
 router.put("/updatePayroll/:id", updatePayroll);
