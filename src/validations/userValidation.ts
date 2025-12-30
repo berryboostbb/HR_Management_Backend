@@ -60,7 +60,7 @@ export const updateUserSchema = Joi.object({
   image: Joi.string(),
   role: Joi.string(),
 
-  employeeType: Joi.string().valid("Office Staff", "Field Staff"),
+  employeeType: Joi.string().valid("Office Staff", "Field Staff", "Admin"),
 
   department: Joi.string(),
   joiningDate: Joi.date(),
