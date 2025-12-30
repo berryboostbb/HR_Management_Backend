@@ -6,6 +6,8 @@ import {
   editAttendance,
   getAttendanceSummary,
   getUserAttendanceStatus,
+  startBreak,
+  endBreak,
 } from "../controllers/attendanceController";
 
 import {
@@ -19,6 +21,8 @@ import auth from "../middleware/auth";
 const router = express.Router();
 
 router.post("/checkin", auth, checkIn);
+router.post("/startBreak", auth, startBreak);
+router.post("/endBreak", auth, endBreak);
 router.post("/checkout", validateBody(checkOutSchema), checkOut);
 router.get("/getAllAttendance", getAllAttendance);
 router.get("/getAttendanceSummary", getAttendanceSummary);
@@ -29,6 +33,6 @@ router.put(
   editAttendance
 );
 
-router.get("/attendance/status", auth, getUserAttendanceStatus);
+router.get("/status", auth, getUserAttendanceStatus);
 
 export default router;

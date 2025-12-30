@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 // Define the interface for Attendance
 export interface IAttendance extends Document {
   employee: {
+    _id: string;
     employeeId: string;
     employeeName: string;
     employeeRole: string;
@@ -23,12 +24,14 @@ export interface IAttendance extends Document {
   status: "Present" | "Late" | "Absent" | "Half-day" | "On Leave";
   locked?: boolean;
   reason?: string;
+  checkInStatus?: "CheckedIn" | "OnBreak" | "CheckedOut"; // Add this field
 }
 
 // Define the schema
 const AttendanceSchema: Schema<IAttendance> = new Schema(
   {
     employee: {
+      _id: { type: String, required: true },
       employeeId: { type: String, required: true },
       employeeName: { type: String, required: true },
       employeeRole: {
@@ -64,8 +67,13 @@ const AttendanceSchema: Schema<IAttendance> = new Schema(
     },
     locked: { type: Boolean, default: false },
     reason: { type: String },
+    checkInStatus: {
+      type: String,
+      enum: ["CheckedIn", "OnBreak", "CheckedOut"],
+      default: "CheckedOut", // Default to "CheckedOut" when not checked in
+    },
   },
-  { timestamps: true } // This will automatically add createdAt and updatedAt timestamps
+  { timestamps: true }
 );
 
 // Create the model

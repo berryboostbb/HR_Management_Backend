@@ -20,7 +20,6 @@ const auth = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers["authorization"];
     const accessToken = authHeader?.split(" ")[1];
-    console.log("🚀 ~ auth ~ accessToken:", accessToken);
 
     // Skip auth check for public routes if needed
     const publicRoutes = ["/user/login", "/user/register"];
