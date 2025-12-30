@@ -502,7 +502,7 @@ export const getUserAttendanceStatus = async (req: Request, res: Response) => {
     // Verify and decode the token
     const decodedToken = JWTService.verifyAccessToken(token);
     const employeeId = decodedToken._id; // Assuming _id is stored in the token payload
-
+    //change
     if (!employeeId) {
       return res.status(400).json({ message: "User not authenticated" });
     }
