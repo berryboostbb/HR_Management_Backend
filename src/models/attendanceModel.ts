@@ -3,17 +3,19 @@ import mongoose, { Schema, Document } from "mongoose";
 // Define the interface for Attendance
 export interface IAttendance extends Document {
   employee: {
+    _id: string;
     employeeId: string;
     employeeName: string;
-    employeeRole: "Admin" | "Office Staff" | "Field Staff" | "HR";
+    employeeRole: string;
+    employeeType: string;
   };
   checkIn?: {
     time: Date;
-    location: { lat: number; lng: number; address: string };
+    location: { lat: number; lng: number };
   };
   checkOut?: {
     time: Date;
-    location: { lat: number; lng: number; address: string };
+    location: { lat: number; lng: number };
   };
   break?: {
     startTime: Date;
@@ -23,18 +25,23 @@ export interface IAttendance extends Document {
   status: "Present" | "Late" | "Absent" | "Half-day" | "On Leave";
   locked?: boolean;
   reason?: string;
+  checkInStatus?: "Pending" | "CheckedIn" | "OnBreak" | "CheckedOut"; // Add this field
 }
 
 // Define the schema
 const AttendanceSchema: Schema<IAttendance> = new Schema(
   {
     employee: {
+      _id: { type: String, required: true },
       employeeId: { type: String, required: true },
       employeeName: { type: String, required: true },
       employeeRole: {
         type: String,
         required: true,
-        enum: ["Admin", "Office Staff", "Field Staff", "HR"],
+      },
+      employeeType: {
+        type: String,
+        required: true,
       },
     },
     checkIn: {
@@ -42,7 +49,6 @@ const AttendanceSchema: Schema<IAttendance> = new Schema(
       location: {
         lat: { type: Number },
         lng: { type: Number },
-        address: { type: String },
       },
     },
     checkOut: {
@@ -50,7 +56,6 @@ const AttendanceSchema: Schema<IAttendance> = new Schema(
       location: {
         lat: { type: Number },
         lng: { type: Number },
-        address: { type: String },
       },
     },
     break: {
@@ -65,8 +70,13 @@ const AttendanceSchema: Schema<IAttendance> = new Schema(
     },
     locked: { type: Boolean, default: false },
     reason: { type: String },
+    checkInStatus: {
+      type: String,
+      enum: ["Pending", "CheckedIn", "OnBreak", "CheckedOut"],
+      default: "Pending", // Default to "Pending" when not checked in
+    },
   },
-  { timestamps: true } // This will automatically add createdAt and updatedAt timestamps
+  { timestamps: true }
 );
 
 // Create the model
