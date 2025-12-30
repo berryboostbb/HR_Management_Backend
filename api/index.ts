@@ -18,7 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://hr-management-dashboard-ten.vercel.app/",
+  "https://hr-management-dashboard-ten.vercel.app",
 ];
 
 app.use(
