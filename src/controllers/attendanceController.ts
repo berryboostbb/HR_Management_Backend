@@ -522,12 +522,6 @@ export const getUserAttendanceStatus = async (req: Request, res: Response) => {
   }
 };
 
-const DEFAULT_LOCATION = {
-  lat: 31.442047069854095,
-  lng: 74.26077691217375,
-  address: "BerryBoost – IT Company in Lahore",
-};
-
 export const updateAttendance = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -560,8 +554,7 @@ export const updateAttendance = async (req: Request, res: Response) => {
     if (checkInTime) {
       attendance.checkIn = {
         time: new Date(checkInTime),
-        location:
-          checkInLocation ?? attendance.checkIn?.location ?? DEFAULT_LOCATION,
+        location: checkInLocation || attendance.checkIn?.location,
       };
 
       // 🔥 AUTO LOGIC
@@ -575,8 +568,7 @@ export const updateAttendance = async (req: Request, res: Response) => {
     if (checkOutTime) {
       attendance.checkOut = {
         time: new Date(checkOutTime),
-        location:
-          checkOutLocation ?? attendance.checkOut?.location ?? DEFAULT_LOCATION,
+        location: checkOutLocation || attendance.checkOut?.location,
       };
 
       // Optional auto logic
