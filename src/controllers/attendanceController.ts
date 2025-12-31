@@ -576,7 +576,7 @@ export const updateAttendance = async (req: Request, res: Response) => {
       attendance.checkOut = {
         time: new Date(checkOutTime),
         location:
-          checkInLocation ?? attendance.checkIn?.location ?? DEFAULT_LOCATION,
+          checkOutLocation ?? attendance.checkOut?.location ?? DEFAULT_LOCATION,
       };
 
       // Optional auto logic
