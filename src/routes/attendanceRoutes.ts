@@ -9,6 +9,7 @@ import {
   startBreak,
   endBreak,
   createDailyAttendance,
+  updateAttendance,
 } from "../controllers/attendanceController";
 
 import {
@@ -33,7 +34,7 @@ router.put(
   validateBody(editAttendanceSchema),
   editAttendance
 );
-
+router.put("/UpdateAttendanceAdmin/:id", updateAttendance);
 router.get("/status", auth, getUserAttendanceStatus);
 
 router.post("/createDailyAttendance", auth, createDailyAttendance);

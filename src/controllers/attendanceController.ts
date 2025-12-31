@@ -521,3 +521,89 @@ export const getUserAttendanceStatus = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Server error", error });
   }
 };
+
+export const updateAttendance = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const {
+      status,
+      checkInTime,
+      checkOutTime,
+      checkInLocation,
+      checkOutLocation,
+      checkInStatus,
+    } = req.body;
+
+    const attendance = await Attendance.findById(id);
+
+    if (!attendance) {
+      return res.status(404).json({ message: "Attendance not found" });
+    }
+
+    // 🔒 Prevent editing locked attendance
+    if (attendance.locked) {
+      return res
+        .status(400)
+        .json({ message: "This attendance is locked and cannot be edited" });
+    }
+
+    /* =====================
+       CHECK-IN UPDATE
+    ====================== */
+    if (checkInTime) {
+      attendance.checkIn = {
+        time: new Date(checkInTime),
+        location: checkInLocation || attendance.checkIn?.location,
+      };
+
+      // 🔥 AUTO LOGIC
+      attendance.checkInStatus = "CheckedIn";
+      attendance.status = "Present";
+    }
+
+    /* =====================
+       CHECK-OUT UPDATE
+    ====================== */
+    if (checkOutTime) {
+      attendance.checkOut = {
+        time: new Date(checkOutTime),
+        location: checkOutLocation || attendance.checkOut?.location,
+      };
+
+      // Optional auto logic
+      attendance.checkInStatus = "CheckedOut";
+    }
+
+    /* =====================
+       MANUAL STATUS UPDATE
+       (only if checkInTime not sent)
+    ====================== */
+    if (status && !checkInTime) {
+      attendance.status = status; // Absent | Late | Leave
+    }
+
+    /* =====================
+       MANUAL CHECK-IN STATUS
+       (only if not auto-set)
+    ====================== */
+    if (checkInStatus && !checkInTime && !checkOutTime) {
+      attendance.checkInStatus = checkInStatus;
+    }
+
+    await attendance.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Attendance updated successfully",
+      attendance,
+    });
+  } catch (error) {
+    console.error("Update Attendance Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update attendance",
+      error,
+    });
+  }
+};
