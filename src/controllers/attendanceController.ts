@@ -521,6 +521,11 @@ export const getUserAttendanceStatus = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Server error", error });
   }
 };
+const DEFAULT_LOCATION = {
+  lat: 31.442047069854095,
+  lng: 74.26077691217375,
+  address: "BerryBoost – IT Company in Lahore",
+};
 
 export const updateAttendance = async (req: Request, res: Response) => {
   try {
@@ -536,17 +541,12 @@ export const updateAttendance = async (req: Request, res: Response) => {
     } = req.body;
 
     const attendance = await Attendance.findById(id);
-
-    if (!attendance) {
+    if (!attendance)
       return res.status(404).json({ message: "Attendance not found" });
-    }
-
-    // 🔒 Prevent editing locked attendance
-    if (attendance.locked) {
+    if (attendance.locked)
       return res
         .status(400)
         .json({ message: "This attendance is locked and cannot be edited" });
-    }
 
     /* =====================
        CHECK-IN UPDATE
@@ -554,10 +554,11 @@ export const updateAttendance = async (req: Request, res: Response) => {
     if (checkInTime) {
       attendance.checkIn = {
         time: new Date(checkInTime),
-        location: checkInLocation || attendance.checkIn?.location,
+        location: {
+          ...DEFAULT_LOCATION,
+          ...(checkInLocation || {}), // ensure object is always passed
+        },
       };
-
-      // 🔥 AUTO LOGIC
       attendance.checkInStatus = "CheckedIn";
       attendance.status = "Present";
     }
@@ -568,24 +569,23 @@ export const updateAttendance = async (req: Request, res: Response) => {
     if (checkOutTime) {
       attendance.checkOut = {
         time: new Date(checkOutTime),
-        location: checkOutLocation || attendance.checkOut?.location,
+        location: {
+          ...DEFAULT_LOCATION,
+          ...(checkOutLocation || {}), // ensure object is always passed
+        },
       };
-
-      // Optional auto logic
       attendance.checkInStatus = "CheckedOut";
     }
 
     /* =====================
        MANUAL STATUS UPDATE
-       (only if checkInTime not sent)
     ====================== */
     if (status && !checkInTime) {
-      attendance.status = status; // Absent | Late | Leave
+      attendance.status = status;
     }
 
     /* =====================
        MANUAL CHECK-IN STATUS
-       (only if not auto-set)
     ====================== */
     if (checkInStatus && !checkInTime && !checkOutTime) {
       attendance.checkInStatus = checkInStatus;
@@ -593,14 +593,14 @@ export const updateAttendance = async (req: Request, res: Response) => {
 
     await attendance.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Attendance updated successfully",
       attendance,
     });
   } catch (error) {
     console.error("Update Attendance Error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to update attendance",
       error,
