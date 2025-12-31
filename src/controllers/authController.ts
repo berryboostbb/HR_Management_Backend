@@ -3,11 +3,10 @@ import User from "../models/userModel";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import JWTService from "../services/JWTServices";
-dotenv.config();
+import moment from "moment-timezone";
+import bcrypt from "bcryptjs";
 
-const generateToken = (id: string) => {
-  return jwt.sign({ id }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "1d" });
-};
+dotenv.config();
 
 const generateEmployeeId = (role: string) => {
   const rolePart = role.substring(0, 3).toUpperCase();
@@ -86,8 +85,6 @@ const generateEmployeeId = (role: string) => {
 // };
 
 // Login
-
-import moment from "moment-timezone";
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -204,8 +201,6 @@ export const getAllUsers = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Server error", error });
   }
 };
-
-import bcrypt from "bcryptjs";
 
 // export const updateUser = async (req: Request, res: Response) => {
 //   try {

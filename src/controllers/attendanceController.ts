@@ -3,20 +3,26 @@ import Attendance, { IAttendance } from "../models/attendanceModel";
 import Account from "../models/userModel";
 import JWTService from "../services/JWTServices";
 import User from "../models/userModel";
+import moment from "moment-timezone";
 
 // Function to create daily attendance records with status "Absent"
 export const createDailyAttendance = async (req: Request, res: Response) => {
   try {
     const employees = await User.find(); // Get all employees
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set the time to 00:00 for today
+    // Get today's date in UTC - Start of the day (midnight)
+    const todayInUTC = moment.utc().startOf("day"); // Get the start of the day in UTC
+
+    console.log(
+      "🚀 ~ createDailyAttendance ~ todayInUTC:",
+      todayInUTC.format()
+    ); // Log the UTC date in proper format
 
     // Use for...of to properly handle async operations
     for (const employee of employees) {
       const existingAttendance = await Attendance.findOne({
         "employee.employeeId": employee.employeeId,
-        date: today,
+        date: todayInUTC.toDate(), // Use UTC for querying the DB
       });
 
       if (!existingAttendance) {
@@ -29,7 +35,7 @@ export const createDailyAttendance = async (req: Request, res: Response) => {
             employeeRole: employee.role,
             employeeType: employee.employeeType, // Add the missing employeeType
           },
-          date: today,
+          date: todayInUTC.toDate(), // Save the date in UTC, converting to Date here
           status: "Absent", // Default to "Absent"
           checkInStatus: "Pending", // Default to "CheckedOut"
         });
@@ -456,20 +462,16 @@ export const getUserAttendanceStatus = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "User not authenticated" });
     }
 
-    // Get today's date in UTC (ignore time) - Start of the day (midnight)
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0); // Set the time to 00:00:00 for comparison
-    todayStart.setUTCSeconds(0, 0); // Make sure it is set in UTC
+    // Get today's date in UTC - Start of the day (midnight)
+    const todayStart = moment.utc().startOf("day").toDate(); // Set to 00:00:00 of today in UTC
 
-    // Get tomorrow's date in UTC (start of the next day)
-    const tomorrowStart = new Date(todayStart);
-    tomorrowStart.setDate(todayStart.getDate() + 1); // Set to the next day's midnight in UTC
-    tomorrowStart.setUTCSeconds(0, 0); // Make sure it is set in UTC
+    // Get tomorrow's date in UTC - Start of the next day
+    const tomorrowStart = moment.utc().add(1, "day").startOf("day").toDate(); // Set to next day's midnight in UTC
 
     console.log("🚀 ~ getUserAttendanceStatus ~ todayStart:", todayStart);
     console.log("🚀 ~ getUserAttendanceStatus ~ tomorrowStart:", tomorrowStart);
 
-    // Fetch the user's attendance record for today
+    // Fetch the user's attendance record for today (in UTC)
     const attendance = await Attendance.findOne({
       "employee._id": employeeId,
       date: { $gte: todayStart, $lt: tomorrowStart }, // Use $gte and $lt to match today's date range
