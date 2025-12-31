@@ -178,17 +178,24 @@ export const logout = async (req: Request, res: Response) => {
 export const getTodayBirthdays = async (req: Request, res: Response) => {
   try {
     const today = new Date();
-    const todayDay = today.getDate();
-    const todayMonth = today.getMonth() + 1;
 
+    // Get the current date and month in UTC
+    const todayDay = today.getUTCDate();
+    const todayMonth = today.getUTCMonth() + 1; // getUTCMonth() returns month from 0 to 11, so we add 1
+
+    // Fetch all users (with DOB, etc.)
     const allUsers = await User.find().select(
       "name email employeeId role department image DOB employeeType"
     );
 
+    // Filter users based on today's month and day in UTC
     const birthdays = allUsers.filter((user) => {
       const dob = new Date(user.DOB);
-      const day = dob.getDate();
-      const month = dob.getMonth() + 1;
+
+      // Compare the day and month in UTC
+      const day = dob.getUTCDate();
+      const month = dob.getUTCMonth() + 1; // getUTCMonth() returns month from 0 to 11, so we add 1
+
       return day === todayDay && month === todayMonth;
     });
 
