@@ -275,17 +275,32 @@ export const endBreak = async (req: Request, res: Response) => {
 };
 
 // Get all attendance logs (HR/Admin)
+
+// Get all attendance logs (HR/Admin)
 export const getAllAttendance = async (req: Request, res: Response) => {
   try {
-    const { search } = req.query;
+    const { search, month, year } = req.query;
 
     const query: any = {};
 
+    // Search filter
     if (search) {
       query.$or = [
         { "employee.employeeId": { $regex: search, $options: "i" } },
         { "employee.employeeName": { $regex: search, $options: "i" } },
       ];
+    }
+
+    // Month and Year filter
+    if (month && year) {
+      const startDate = new Date(Number(year), Number(month) - 1, 1); // First day of the month
+      const endDate = new Date(Number(year), Number(month), 0); // Last day of the month
+
+      // Filter by the month and year
+      query.date = {
+        $gte: startDate,
+        $lte: endDate,
+      };
     }
 
     const logs = await Attendance.find(query).sort({ date: -1 });
@@ -294,6 +309,26 @@ export const getAllAttendance = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Server error", error });
   }
 };
+
+// export const getAllAttendance = async (req: Request, res: Response) => {
+//   try {
+//     const { search } = req.query;
+
+//     const query: any = {};
+
+//     if (search) {
+//       query.$or = [
+//         { "employee.employeeId": { $regex: search, $options: "i" } },
+//         { "employee.employeeName": { $regex: search, $options: "i" } },
+//       ];
+//     }
+
+//     const logs = await Attendance.find(query).sort({ date: -1 });
+//     res.json(logs);
+//   } catch (error) {
+//     res.status(500).json({ message: "Server error", error });
+//   }
+// };
 
 // Edit Attendance (HR/Admin)
 export const editAttendance = async (req: Request, res: Response) => {
