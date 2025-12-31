@@ -3,20 +3,26 @@ import Attendance, { IAttendance } from "../models/attendanceModel";
 import Account from "../models/userModel";
 import JWTService from "../services/JWTServices";
 import User from "../models/userModel";
+import moment from "moment-timezone";
 
 // Function to create daily attendance records with status "Absent"
 export const createDailyAttendance = async (req: Request, res: Response) => {
   try {
     const employees = await User.find(); // Get all employees
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set the time to 00:00 for today
+    // Get today's date in UTC - Start of the day (midnight)
+    const todayInUTC = moment.utc().startOf("day"); // Get the start of the day in UTC
+
+    console.log(
+      "🚀 ~ createDailyAttendance ~ todayInUTC:",
+      todayInUTC.format()
+    ); // Log the UTC date in proper format
 
     // Use for...of to properly handle async operations
     for (const employee of employees) {
       const existingAttendance = await Attendance.findOne({
         "employee.employeeId": employee.employeeId,
-        date: today,
+        date: todayInUTC.toDate(), // Use UTC for querying the DB
       });
 
       if (!existingAttendance) {
@@ -29,7 +35,7 @@ export const createDailyAttendance = async (req: Request, res: Response) => {
             employeeRole: employee.role,
             employeeType: employee.employeeType, // Add the missing employeeType
           },
-          date: today,
+          date: todayInUTC.toDate(), // Save the date in UTC, converting to Date here
           status: "Absent", // Default to "Absent"
           checkInStatus: "Pending", // Default to "CheckedOut"
         });
@@ -48,92 +54,6 @@ export const createDailyAttendance = async (req: Request, res: Response) => {
       .json({ message: "Error creating attendance records", error });
   }
 };
-
-// Check-In
-// export const checkIn = async (req: Request, res: Response) => {
-//   try {
-//     // Extract the token from the Authorization header
-//     const token = req.headers.authorization?.split(" ")[1]; // "Bearer <token>"
-
-//     if (!token) {
-//       return res
-//         .status(400)
-//         .json({ message: "Authorization token is missing" });
-//     }
-
-//     // Verify and decode the token to get user details
-//     const decodedToken = JWTService.verifyAccessToken(token);
-
-//     // Extract user details from the decoded token
-//     const loggedInUserId = decodedToken._id; // Get the logged-in user ID from the token
-
-//     // Get the user from the database using the logged-in userId
-//     const loggedInUser = await User.findById(loggedInUserId); // Assuming User model has a findById method
-
-//     if (!loggedInUser) {
-//       return res.status(404).json({ message: "User not found" });
-//     }
-
-//     // Check if the logged-in user is an admin
-//     const isAdmin = loggedInUser.role === "admin"; // Assuming 'role' field determines user type
-
-//     // Determine the employeeId: if logged-in user is admin, use the employeeId from the request body, otherwise use the logged-in user ID
-//     const employeeId = isAdmin ? req.body.employeeId : loggedInUser.employeeId;
-
-//     // Get today's date (ignore time)
-//     const today = new Date();
-//     today.setHours(0, 0, 0, 0); // Set the time to 00:00:00 for comparison
-
-//     // Check if attendance already exists for today
-//     const existingAttendance = await Attendance.findOne({
-//       "employee.employeeId": employeeId, // Use employeeId for searching
-//       date: today,
-//     });
-
-//     // If attendance already exists and the user has checked in, return a response
-//     if (existingAttendance?.checkIn) {
-//       return res.status(400).json({ message: "Already checked in today" });
-//     }
-
-//     // Create a new attendance record or use the existing one
-//     const attendance =
-//       existingAttendance ||
-//       new Attendance({
-//         employee: {
-//           _id: loggedInUser._id,
-//           employeeId: loggedInUser.employeeId,
-//           employeeName: loggedInUser.name, // Assuming 'name' field is present in User model
-//           employeeRole: loggedInUser.role, // Assuming 'role' field is present in User model
-//           employeeType: loggedInUser.employeeType, // Assuming 'employeeType' field is present in User model
-//         },
-//         date: today,
-//         status: "Present", // Default status
-//         checkInStatus: "CheckedIn", // Set checkInStatus to CheckedIn
-//       });
-
-//     // Get location data from the request body
-//     const { location } = req.body;
-
-//     // Log check-in time and location
-//     attendance.checkIn = {
-//       time: new Date(),
-//       location,
-//     };
-
-//     // Save the attendance record
-//     await attendance.save();
-
-//     res.json({
-//       message: `Checked in successfully ${
-//         isAdmin ? `for employee ${employeeId}` : ""
-//       }`,
-//       attendance,
-//     });
-//   } catch (error) {
-//     console.error("Error in checkIn:", error);
-//     res.status(500).json({ message: "Server error", error });
-//   }
-// };
 
 export const checkIn = async (req: Request, res: Response) => {
   try {
@@ -361,17 +281,32 @@ export const endBreak = async (req: Request, res: Response) => {
 };
 
 // Get all attendance logs (HR/Admin)
+
+// Get all attendance logs (HR/Admin)
 export const getAllAttendance = async (req: Request, res: Response) => {
   try {
-    const { search } = req.query;
+    const { search, month, year } = req.query;
 
     const query: any = {};
 
+    // Search filter
     if (search) {
       query.$or = [
         { "employee.employeeId": { $regex: search, $options: "i" } },
         { "employee.employeeName": { $regex: search, $options: "i" } },
       ];
+    }
+
+    // Month and Year filter
+    if (month && year) {
+      const startDate = new Date(Number(year), Number(month) - 1, 1); // First day of the month
+      const endDate = new Date(Number(year), Number(month), 0); // Last day of the month
+
+      // Filter by the month and year
+      query.date = {
+        $gte: startDate,
+        $lte: endDate,
+      };
     }
 
     const logs = await Attendance.find(query).sort({ date: -1 });
@@ -380,6 +315,26 @@ export const getAllAttendance = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Server error", error });
   }
 };
+
+// export const getAllAttendance = async (req: Request, res: Response) => {
+//   try {
+//     const { search } = req.query;
+
+//     const query: any = {};
+
+//     if (search) {
+//       query.$or = [
+//         { "employee.employeeId": { $regex: search, $options: "i" } },
+//         { "employee.employeeName": { $regex: search, $options: "i" } },
+//       ];
+//     }
+
+//     const logs = await Attendance.find(query).sort({ date: -1 });
+//     res.json(logs);
+//   } catch (error) {
+//     res.status(500).json({ message: "Server error", error });
+//   }
+// };
 
 // Edit Attendance (HR/Admin)
 export const editAttendance = async (req: Request, res: Response) => {
@@ -507,20 +462,16 @@ export const getUserAttendanceStatus = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "User not authenticated" });
     }
 
-    // Get today's date in UTC (ignore time) - Start of the day (midnight)
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0); // Set the time to 00:00:00 for comparison
-    todayStart.setUTCSeconds(0, 0); // Make sure it is set in UTC
+    // Get today's date in UTC - Start of the day (midnight)
+    const todayStart = moment.utc().startOf("day").toDate(); // Set to 00:00:00 of today in UTC
 
-    // Get tomorrow's date in UTC (start of the next day)
-    const tomorrowStart = new Date(todayStart);
-    tomorrowStart.setDate(todayStart.getDate() + 1); // Set to the next day's midnight in UTC
-    tomorrowStart.setUTCSeconds(0, 0); // Make sure it is set in UTC
+    // Get tomorrow's date in UTC - Start of the next day
+    const tomorrowStart = moment.utc().add(1, "day").startOf("day").toDate(); // Set to next day's midnight in UTC
 
     console.log("🚀 ~ getUserAttendanceStatus ~ todayStart:", todayStart);
     console.log("🚀 ~ getUserAttendanceStatus ~ tomorrowStart:", tomorrowStart);
 
-    // Fetch the user's attendance record for today
+    // Fetch the user's attendance record for today (in UTC)
     const attendance = await Attendance.findOne({
       "employee._id": employeeId,
       date: { $gte: todayStart, $lt: tomorrowStart }, // Use $gte and $lt to match today's date range
