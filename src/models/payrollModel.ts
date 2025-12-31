@@ -17,11 +17,12 @@ interface IAllowances {
 export interface IPayroll extends Document {
   employeeId: string;
   employeeName: string;
-  month: string; // e.g. "December"
-  year: number; // e.g. 2025
-  position?: string; // Employee position
+  month: string;
+  year: number;
+  position?: string;
   presentDays: number;
   approvedLeaves: number;
+  totalWorkingDays: number;
   basicSalary: number;
   allowances: IAllowances;
   deductions: IDeductions;
@@ -36,11 +37,17 @@ export interface IPayroll extends Document {
 
 const PayrollSchema = new Schema<IPayroll>(
   {
-    employeeId: { type: String, required: true, index: true },
+    employeeId: {
+      type: String,
+      ref: "User",
+      required: true,
+      index: true,
+    },
     employeeName: { type: String, required: true, index: true },
     position: { type: String, default: "" },
     month: { type: String, required: true },
     year: { type: Number, required: true },
+    totalWorkingDays: { type: Number, required: true, min: 0 }, // NEW
     presentDays: { type: Number, default: 0, min: 0 },
     approvedLeaves: { type: Number, default: 0, min: 0 },
     basicSalary: { type: Number, required: true, min: 0 },
@@ -56,8 +63,8 @@ const PayrollSchema = new Schema<IPayroll>(
       tax: { type: Number, default: 0, min: 0 },
       others: { type: Number, default: 0, min: 0 },
     },
-    grossSalary: { type: Number, required: true, min: 0 }, // basic + allowances
-    netPay: { type: Number, required: true, min: 0 }, // gross - deductions
+    grossSalary: { type: Number, required: true, min: 0 },
+    netPay: { type: Number, required: true, min: 0 },
     payrollStatus: {
       type: String,
       enum: ["Pending", "Processed", "Approved"],
@@ -71,7 +78,6 @@ const PayrollSchema = new Schema<IPayroll>(
   { timestamps: true }
 );
 
-// Unique constraint per employee per month/year
 PayrollSchema.index({ employeeId: 1, month: 1, year: 1 }, { unique: true });
 
 const Payroll = mongoose.model<IPayroll>("Payroll", PayrollSchema);

@@ -10,6 +10,7 @@ export const generatePayroll = async (req: Request, res: Response) => {
       employeeName,
       position,
       month,
+      totalWorkingDays,
       year,
       presentDays,
       approvedLeaves,
@@ -33,7 +34,7 @@ export const generatePayroll = async (req: Request, res: Response) => {
       (deductions.loan || 0) +
       (deductions.advanceSalary || 0) +
       (deductions.tax || 0) +
-      (deductions.custom || 0);
+      (deductions.others || 0);
 
     const grossSalary = basicSalary + totalAllowances;
     const netPay = grossSalary - totalDeductions;
@@ -47,6 +48,7 @@ export const generatePayroll = async (req: Request, res: Response) => {
       year,
       presentDays,
       approvedLeaves,
+      totalWorkingDays,
       basicSalary,
       allowances,
       deductions,
@@ -124,6 +126,7 @@ export const updatePayroll = async (req: Request, res: Response) => {
       presentDays,
       approvedLeaves,
       basicSalary,
+      totalWorkingDays,
       allowances,
       deductions,
     } = req.body;
