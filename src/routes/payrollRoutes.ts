@@ -4,7 +4,6 @@ import {
   approvePayroll,
   getAllPayrolls,
   getEmployeePayrolls,
-  downloadSalarySlip,
   generateSalarySlip,
   updatePayroll,
 } from "../controllers/payrollController";
@@ -25,6 +24,5 @@ router.get("/getAllPayrolls", getAllPayrolls);
 router.put("/updatePayroll/:id", updatePayroll);
 router.get("/employee/:employeeId", getEmployeePayrolls);
 router.post("/generateSalarySlip/:id", generateSalarySlip);
-router.get("/salarySlip/:id", downloadSalarySlip);
 
 export default router;

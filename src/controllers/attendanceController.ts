@@ -4,48 +4,63 @@ import Account from "../models/userModel";
 import JWTService from "../services/JWTServices";
 import User from "../models/userModel";
 import moment from "moment-timezone";
+import Leave from "../models/leavesModel";
 
 // Function to create daily attendance records with status "Absent"
 export const createDailyAttendance = async (req: Request, res: Response) => {
   try {
     const employees = await User.find(); // Get all employees
 
-    // Get today's date in UTC - Start of the day (midnight)
-    const todayInUTC = moment.utc().startOf("day"); // Get the start of the day in UTC
+    // Get today's date in UTC - Start of the day
+    const todayInUTC = moment.utc().startOf("day");
 
     console.log(
       "🚀 ~ createDailyAttendance ~ todayInUTC:",
       todayInUTC.format()
-    ); // Log the UTC date in proper format
+    );
 
-    // Use for...of to properly handle async operations
     for (const employee of employees) {
+      // 1️⃣ Check if employee has leave today
+      const onLeave = await Leave.findOne({
+        employeeId: employee.employeeId,
+        status: "Approved", // Only consider approved leaves
+        startDate: { $lte: todayInUTC.toDate() },
+        endDate: { $gte: todayInUTC.toDate() },
+      });
+
+      if (onLeave) {
+        console.log(
+          `Skipping attendance for ${employee.name}, on leave today.`
+        );
+        continue; // Skip to next employee
+      }
+
+      // 2️⃣ Check if attendance already exists
       const existingAttendance = await Attendance.findOne({
         "employee.employeeId": employee.employeeId,
-        date: todayInUTC.toDate(), // Use UTC for querying the DB
+        date: todayInUTC.toDate(),
       });
 
       if (!existingAttendance) {
-        // Create a new attendance record with "Absent" status
+        // 3️⃣ Create attendance as "Absent"
         const newAttendance = new Attendance({
           employee: {
             _id: employee._id,
             employeeId: employee.employeeId,
             employeeName: employee.name,
             employeeRole: employee.role,
-            employeeType: employee.employeeType, // Add the missing employeeType
+            employeeType: employee.employeeType,
           },
-          date: todayInUTC.toDate(), // Save the date in UTC, converting to Date here
-          status: "Absent", // Default to "Absent"
-          checkInStatus: "Pending", // Default to "CheckedOut"
+          date: todayInUTC.toDate(),
+          status: "Absent",
+          checkInStatus: "Pending",
         });
 
-        await newAttendance.save(); // Ensure the save operation completes before moving to the next employee
+        await newAttendance.save();
+        console.log(`Attendance created for ${employee.name}`);
       }
     }
 
-    // After the loop finishes, send the response back to the client
-    console.log("Attendance records created for today.");
     res.json({ message: "Attendance records successfully created for today." });
   } catch (error) {
     console.error("Error creating daily attendance records:", error);
@@ -299,10 +314,13 @@ export const getAllAttendance = async (req: Request, res: Response) => {
 
     // Month and Year filter
     if (month && year) {
-      const startDate = new Date(Number(year), Number(month) - 1, 1); // First day of the month
-      const endDate = new Date(Number(year), Number(month), 0); // Last day of the month
+      // Month in JS is 0-indexed
+      const startDate = moment
+        .utc(`${year}-${month}-01`)
+        .startOf("day")
+        .toDate();
+      const endDate = moment.utc(startDate).endOf("month").toDate();
 
-      // Filter by the month and year
       query.date = {
         $gte: startDate,
         $lte: endDate,
@@ -521,86 +539,88 @@ export const getUserAttendanceStatus = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Server error", error });
   }
 };
-const DEFAULT_LOCATION = {
-  lat: 31.442047069854095,
-  lng: 74.26077691217375,
-  address: "BerryBoost – IT Company in Lahore",
-};
 
-export const updateAttendance = async (req: Request, res: Response) => {
+export const updateAttendanceAdmin = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-
-    const {
-      status,
-      checkInTime,
-      checkOutTime,
-      checkInLocation,
-      checkOutLocation,
-      checkInStatus,
-    } = req.body;
 
     const attendance = await Attendance.findById(id);
     if (!attendance)
       return res.status(404).json({ message: "Attendance not found" });
+
     if (attendance.locked)
       return res
         .status(400)
         .json({ message: "This attendance is locked and cannot be edited" });
 
-    /* =====================
-       CHECK-IN UPDATE
-    ====================== */
+    const DEFAULT_LOCATION = {
+      lat: 31.441949367930203,
+      lng: 74.26074501840554,
+      address: "BerryBoost – IT Company in Lahore",
+    };
+
+    let updated = false;
+
+    const checkInTime = req.body.checkInTime || req.body?.checkIn?.time;
+    const checkOutTime = req.body.checkOutTime || req.body?.checkOut?.time;
+
+    // ================= CHECK-IN =================
     if (checkInTime) {
-      attendance.checkIn = {
-        time: new Date(checkInTime),
-        location: {
-          ...DEFAULT_LOCATION,
-          ...(checkInLocation || {}), // ensure object is always passed
-        },
-      };
-      attendance.checkInStatus = "CheckedIn";
+      const date = new Date(checkInTime);
+      if (isNaN(date.getTime()))
+        return res.status(400).json({ message: "Invalid checkIn time" });
+
+      attendance.set("checkIn", {
+        time: date,
+        location: DEFAULT_LOCATION,
+      });
+
+      // If only check-in is updated and check-out is NOT provided
+      if (!checkOutTime) {
+        attendance.checkInStatus = "CheckedIn";
+      }
+
       attendance.status = "Present";
+      updated = true;
     }
 
-    /* =====================
-       CHECK-OUT UPDATE
-    ====================== */
+    // ================= CHECK-OUT =================
     if (checkOutTime) {
-      attendance.checkOut = {
-        time: new Date(checkOutTime),
-        location: {
-          ...DEFAULT_LOCATION,
-          ...(checkOutLocation || {}), // ensure object is always passed
-        },
-      };
-      attendance.checkInStatus = "CheckedOut";
+      const date = new Date(checkOutTime);
+      if (isNaN(date.getTime()))
+        return res.status(400).json({ message: "Invalid checkOut time" });
+
+      attendance.set("checkOut", {
+        time: date,
+        location: DEFAULT_LOCATION,
+      });
+
+      // If only check-out is updated but check-in already exists
+      if (checkInTime || attendance.checkIn) {
+        attendance.checkInStatus = "CheckedOut"; // final state
+      } else {
+        // optional: prevent checkout without check-in
+        return res
+          .status(400)
+          .json({ message: "Cannot check out without check-in" });
+      }
+
+      updated = true;
     }
 
-    /* =====================
-       MANUAL STATUS UPDATE
-    ====================== */
-    if (status && !checkInTime) {
-      attendance.status = status;
-    }
-
-    /* =====================
-       MANUAL CHECK-IN STATUS
-    ====================== */
-    if (checkInStatus && !checkInTime && !checkOutTime) {
-      attendance.checkInStatus = checkInStatus;
-    }
+    if (!updated)
+      return res.status(400).json({ message: "No valid fields to update" });
 
     await attendance.save();
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "Attendance updated successfully",
       attendance,
     });
   } catch (error) {
-    console.error("Update Attendance Error:", error);
-    return res.status(500).json({
+    console.error(error);
+    res.status(500).json({
       success: false,
       message: "Failed to update attendance",
       error,

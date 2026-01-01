@@ -2,11 +2,26 @@ import Joi from "joi";
 import { Request, Response, NextFunction } from "express";
 
 const leaveEntitlementsSchema = Joi.object({
-  casualLeave: Joi.number().min(0).default(0),
-  sickLeave: Joi.number().min(0).default(0),
-  annualLeave: Joi.number().min(0).default(0),
-  maternityLeave: Joi.number().min(0).default(0),
-  paternityLeave: Joi.number().min(0).default(0),
+  casualLeave: Joi.object({
+    total: Joi.number().default(0),
+    consumed: Joi.number().default(0),
+  }),
+  sickLeave: Joi.object({
+    total: Joi.number().default(0),
+    consumed: Joi.number().default(0),
+  }),
+  annualLeave: Joi.object({
+    total: Joi.number().default(0),
+    consumed: Joi.number().default(0),
+  }),
+  maternityLeave: Joi.object({
+    total: Joi.number().default(0),
+    consumed: Joi.number().default(0),
+  }),
+  paternityLeave: Joi.object({
+    total: Joi.number().default(0),
+    consumed: Joi.number().default(0),
+  }),
 });
 
 export const registerSchema = Joi.object({

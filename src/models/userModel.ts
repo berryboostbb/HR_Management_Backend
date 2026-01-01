@@ -19,12 +19,17 @@ interface ILoanPF {
   loan: number;
   pf: number;
 }
+interface ILeaveType {
+  total: number; // Total allowed leaves
+  consumed: number; // Leaves already taken
+}
+
 interface ILeaveEntitlements {
-  casualLeave: number;
-  sickLeave: number;
-  annualLeave: number;
-  maternityLeave: number;
-  paternityLeave: number;
+  casualLeave: ILeaveType;
+  sickLeave: ILeaveType;
+  annualLeave: ILeaveType;
+  maternityLeave: ILeaveType;
+  paternityLeave: ILeaveType;
 }
 
 export interface IUser extends Document {
@@ -82,11 +87,41 @@ const UserSchema: Schema<IUser> = new Schema(
     DOB: { type: Date, required: true },
     employeeStatus: { type: String, required: true },
     leaveEntitlements: {
-      casualLeave: { type: Number, default: 0 },
-      sickLeave: { type: Number, default: 0 },
-      annualLeave: { type: Number, default: 0 },
-      maternityLeave: { type: Number, default: 0 },
-      paternityLeave: { type: Number, default: 0 },
+      casualLeave: {
+        type: {
+          total: { type: Number, default: 0 },
+          consumed: { type: Number, default: 0 },
+        },
+        default: {},
+      },
+      sickLeave: {
+        type: {
+          total: { type: Number, default: 0 },
+          consumed: { type: Number, default: 0 },
+        },
+        default: {},
+      },
+      annualLeave: {
+        type: {
+          total: { type: Number, default: 0 },
+          consumed: { type: Number, default: 0 },
+        },
+        default: {},
+      },
+      maternityLeave: {
+        type: {
+          total: { type: Number, default: 0 },
+          consumed: { type: Number, default: 0 },
+        },
+        default: {},
+      },
+      paternityLeave: {
+        type: {
+          total: { type: Number, default: 0 },
+          consumed: { type: Number, default: 0 },
+        },
+        default: {},
+      },
     },
 
     email: { type: String, required: true, unique: true },

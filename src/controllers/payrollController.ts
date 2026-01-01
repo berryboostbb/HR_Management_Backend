@@ -185,33 +185,33 @@ export const getEmployeePayrolls = async (req: Request, res: Response) => {
 
 export const generateSalarySlip = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const payroll = await Payroll.findById(id);
-    if (!payroll) return res.status(404).json({ message: "Payroll not found" });
+    const { employeeId } = req.params;
 
-    const salarySlipUrl = await generateSalarySlipPDF(payroll);
-    payroll.salarySlipUrl = salarySlipUrl;
-    await payroll.save();
+    if (!employeeId)
+      return res.status(400).json({ message: "Employee ID is required" });
+
+    // Find payrolls for the employee where payrollStatus is "Approved"
+    const payrolls = await Payroll.find({
+      employeeId,
+      payrollStatus: "Approved",
+    }).sort({ processedAt: -1 }); // latest first
+
+    if (payrolls.length === 0)
+      return res
+        .status(404)
+        .json({ message: "No approved payrolls found for this employee" });
 
     res.status(200).json({
-      message: "Salary slip generated successfully",
-      salarySlipUrl,
-      payroll,
+      success: true,
+      message: "Approved payrolls fetched successfully",
+      payrolls,
     });
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-export const downloadSalarySlip = async (req: Request, res: Response) => {
-  try {
-    const payroll = await Payroll.findById(req.params.id);
-    if (!payroll || !payroll.salarySlipUrl)
-      return res.status(404).json({ message: "Salary slip not found" });
-
-    const filePath = path.join(process.cwd(), payroll.salarySlipUrl);
-    res.download(filePath);
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    console.error("Error fetching approved payrolls:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 };

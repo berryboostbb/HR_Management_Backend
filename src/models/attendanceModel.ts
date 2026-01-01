@@ -25,7 +25,13 @@ export interface IAttendance extends Document {
   status: "Present" | "Late" | "Absent" | "Half-day" | "On Leave";
   locked?: boolean;
   reason?: string;
-  checkInStatus?: "Pending" | "CheckedIn" | "OnBreak" | "CheckedOut"; // Add this field
+  leaveInfo?: { leaveId: mongoose.Types.ObjectId; leaveType: string };
+  checkInStatus?:
+    | "Pending"
+    | "CheckedIn"
+    | "OnBreak"
+    | "CheckedOut"
+    | "On Leave"; // Add this field
 }
 
 // Define the schema
@@ -51,6 +57,7 @@ const AttendanceSchema: Schema<IAttendance> = new Schema(
         lng: { type: Number },
       },
     },
+    leaveInfo: { type: Object },
     checkOut: {
       time: { type: Date },
       location: {
@@ -72,7 +79,7 @@ const AttendanceSchema: Schema<IAttendance> = new Schema(
     reason: { type: String },
     checkInStatus: {
       type: String,
-      enum: ["Pending", "CheckedIn", "OnBreak", "CheckedOut"],
+      enum: ["Pending", "CheckedIn", "OnBreak", "CheckedOut", "On Leave"],
       default: "Pending", // Default to "Pending" when not checked in
     },
   },
