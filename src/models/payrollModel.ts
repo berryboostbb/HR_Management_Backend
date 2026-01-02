@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Types } from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
 
 interface IDeductions {
   pf: number;
@@ -29,7 +29,8 @@ export interface IPayroll extends Document {
   grossSalary: number;
   netPay: number;
   payrollStatus: "Pending" | "Processed" | "Approved";
-  approvedBy?: Types.ObjectId;
+  approvedBy?: string; // <-- now a string
+  approvedAt?: Date;
   isLocked: boolean;
   processedAt: Date;
   salarySlipUrl?: string;
@@ -37,17 +38,12 @@ export interface IPayroll extends Document {
 
 const PayrollSchema = new Schema<IPayroll>(
   {
-    employeeId: {
-      type: String,
-      ref: "User",
-      required: true,
-      index: true,
-    },
+    employeeId: { type: String, required: true, index: true },
     employeeName: { type: String, required: true, index: true },
     position: { type: String, default: "" },
     month: { type: String, required: true },
     year: { type: Number, required: true },
-    totalWorkingDays: { type: Number, required: true, min: 0 }, // NEW
+    totalWorkingDays: { type: Number, required: true, min: 0 },
     presentDays: { type: Number, default: 0, min: 0 },
     approvedLeaves: { type: Number, default: 0, min: 0 },
     basicSalary: { type: Number, required: true, min: 0 },
@@ -70,7 +66,8 @@ const PayrollSchema = new Schema<IPayroll>(
       enum: ["Pending", "Processed", "Approved"],
       default: "Pending",
     },
-    approvedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    approvedBy: { type: String }, // <-- string name
+    approvedAt: { type: Date },
     isLocked: { type: Boolean, default: false },
     processedAt: { type: Date, default: Date.now },
     salarySlipUrl: { type: String },

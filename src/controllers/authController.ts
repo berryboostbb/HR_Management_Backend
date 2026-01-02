@@ -159,24 +159,34 @@ export const register = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
+
+    // Find user by email
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
+    // Check if user is inactive
+    if (user.employeeStatus === "Inactive") {
+      return res
+        .status(403)
+        .json({ message: "Your account is inactive. Please contact admin." });
+    }
+
+    // Verify password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
-    } else {
-      // Generate access token
-      const token = JWTService.signAccessToken(
-        { _id: user._id.toString() },
-        "1d"
-      );
-
-      // Store the token in the database
-      await JWTService.storeAccessToken(token, user._id);
-
-      res.json({ user, token });
     }
+
+    // Generate access token
+    const token = JWTService.signAccessToken(
+      { _id: user._id.toString() },
+      "1d"
+    );
+
+    // Store the token in the database
+    await JWTService.storeAccessToken(token, user._id);
+
+    res.json({ user, token });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }

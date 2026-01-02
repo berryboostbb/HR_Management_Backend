@@ -73,16 +73,32 @@ export const generatePayroll = async (req: Request, res: Response) => {
 
 export const approvePayroll = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params; // Payroll ID from URL
+    const { id } = req.params;
+    const { approvedBy } = req.body; // string name from frontend
+
+    if (!approvedBy) {
+      return res.status(400).json({ message: "Approver name is required" });
+    }
 
     const payroll = await Payroll.findById(id);
     if (!payroll) return res.status(404).json({ message: "Payroll not found" });
+
+    if (payroll.payrollStatus === "Approved") {
+      return res.status(400).json({ message: "Payroll is already approved" });
+    }
+
     payroll.payrollStatus = "Approved";
+    payroll.approvedBy = approvedBy;
+    payroll.approvedAt = new Date();
 
     await payroll.save();
 
-    res.json({ message: "Payroll approved successfully", payroll });
+    res.status(200).json({
+      message: "Payroll approved successfully",
+      payroll,
+    });
   } catch (error) {
+    console.error("Approve Payroll Error:", error);
     res.status(500).json({ message: "Server error", error });
   }
 };
@@ -185,16 +201,22 @@ export const getEmployeePayrolls = async (req: Request, res: Response) => {
 
 export const generateSalarySlip = async (req: Request, res: Response) => {
   try {
-    const { employeeId } = req.params;
+    const employeeId = req.params.id;
+    const { month, year } = req.query;
 
     if (!employeeId)
       return res.status(400).json({ message: "Employee ID is required" });
 
-    // Find payrolls for the employee where payrollStatus is "Approved"
-    const payrolls = await Payroll.find({
+    // Build query
+    const query: any = {
       employeeId,
       payrollStatus: "Approved",
-    }).sort({ processedAt: -1 }); // latest first
+    };
+
+    if (month) query.month = month as string;
+    if (year) query.year = Number(year);
+
+    const payrolls = await Payroll.find(query).sort({ processedAt: -1 });
 
     if (payrolls.length === 0)
       return res
