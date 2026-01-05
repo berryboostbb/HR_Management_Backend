@@ -10,6 +10,8 @@ import {
   endBreak,
   createDailyAttendance,
   updateAttendanceAdmin,
+  getMonthlyAttendanceGraph,
+  setCompanyTiming,
 } from "../controllers/attendanceController";
 
 import {
@@ -38,5 +40,7 @@ router.put("/updateAttendanceAdmin/:id", updateAttendanceAdmin);
 router.get("/status", auth, getUserAttendanceStatus);
 
 router.post("/createDailyAttendance", auth, createDailyAttendance);
+router.get("/getMonthlyAttendanceGraph", getMonthlyAttendanceGraph);
+router.post("/setCompanyTiming", setCompanyTiming);
 
 export default router;

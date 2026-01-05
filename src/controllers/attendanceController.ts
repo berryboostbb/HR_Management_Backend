@@ -5,7 +5,17 @@ import JWTService from "../services/JWTServices";
 import User from "../models/userModel";
 import moment from "moment-timezone";
 import Leave from "../models/leavesModel";
+import companyTimingModel from "../models/companyTimingModel";
+import CompanyTiming from "../models/companyTimingModel";
 
+const isLateCheckIn = (checkInDate: Date, startTime: string) => {
+  const [hours, minutes] = startTime.split(":").map(Number);
+
+  const companyStart = new Date(checkInDate);
+  companyStart.setHours(hours, minutes, 0, 0);
+
+  return checkInDate > companyStart;
+};
 // Function to create daily attendance records with status "Absent"
 export const createDailyAttendance = async (req: Request, res: Response) => {
   try {
@@ -70,98 +80,199 @@ export const createDailyAttendance = async (req: Request, res: Response) => {
   }
 };
 
+// export const checkIn = async (req: Request, res: Response) => {
+//   try {
+//     // Extract the token from the Authorization header
+//     const token = req.headers.authorization?.split(" ")[1]; // "Bearer <token>"
+
+//     if (!token) {
+//       return res
+//         .status(400)
+//         .json({ message: "Authorization token is missing" });
+//     }
+
+//     // Verify and decode the token to get user details
+//     const decodedToken = JWTService.verifyAccessToken(token);
+
+//     // Extract user details from the decoded token
+//     const loggedInUserId = decodedToken._id; // Get the logged-in user ID from the token
+
+//     // Get the user from the database using the logged-in userId
+//     const loggedInUser = await User.findById(loggedInUserId); // Assuming User model has a findById method
+
+//     if (!loggedInUser) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     // Check if the logged-in user is an admin
+//     const isAdmin = loggedInUser.role === "admin"; // Assuming 'role' field determines user type
+
+//     // Determine the employeeId: if logged-in user is admin, use the employeeId from the request body, otherwise use the logged-in user ID
+//     const employeeId = isAdmin ? req.body.employeeId : loggedInUser.employeeId;
+
+//     // Get today's date (ignore time)
+//     const today = new Date();
+//     today.setHours(0, 0, 0, 0); // Set the time to 00:00:00 for comparison
+
+//     // Check if attendance already exists for today
+//     let attendance = await Attendance.findOne({
+//       "employee.employeeId": employeeId,
+//       date: today,
+//     });
+//     console.log("🚀 ~ checkIn ~ attendance:", attendance);
+
+//     // If attendance already exists and the user has checked in, return a response
+//     if (attendance?.checkInStatus === "CheckedIn") {
+//       return res.status(400).json({ message: "Already checked in today" });
+//     }
+
+//     // If attendance doesn't exist, create a new one
+//     if (!attendance) {
+//       attendance = new Attendance({
+//         employee: {
+//           _id: loggedInUser._id,
+//           employeeId: loggedInUser.employeeId,
+//           employeeName: loggedInUser.name, // Assuming 'name' field is present in User model
+//           employeeRole: loggedInUser.role, // Assuming 'role' field is present in User model
+//           employeeType: loggedInUser.employeeType, // Assuming 'employeeType' field is present in User model
+//         },
+//         date: today,
+//         status: "Absent", // Default status
+//         checkInStatus: "CheckedOut", // Default to "CheckedOut" since they haven't checked in yet
+//       });
+//     }
+
+//     // If the attendance exists and hasn't been checked in, we update it
+//     attendance.checkInStatus = "CheckedIn"; // Set checkInStatus to "CheckedIn" when employee checks in
+//     attendance.status = "Present"; // Update status to "Present" once they check in
+
+//     // Get location data from the request body
+//     const { location } = req.body;
+
+//     // Log check-in time and location
+//     attendance.checkIn = {
+//       time: new Date(),
+//       location,
+//     };
+
+//     // Save the attendance record (whether it's updated or newly created)
+//     await attendance.save();
+
+//     // Return success message
+//     res.json({
+//       message: `Checked in successfully ${
+//         isAdmin ? `for employee ${employeeId}` : ""
+//       }`,
+//       attendance,
+//     });
+//   } catch (error) {
+//     console.error("Error in checkIn:", error);
+//     res.status(500).json({ message: "Server error", error });
+//   }
+// };
+
+// Check-Out
+
 export const checkIn = async (req: Request, res: Response) => {
   try {
-    // Extract the token from the Authorization header
-    const token = req.headers.authorization?.split(" ")[1]; // "Bearer <token>"
+    /* -------------------------------- Token -------------------------------- */
+    const token = req.headers.authorization?.split(" ")[1];
 
     if (!token) {
       return res
-        .status(400)
+        .status(401)
         .json({ message: "Authorization token is missing" });
     }
 
-    // Verify and decode the token to get user details
     const decodedToken = JWTService.verifyAccessToken(token);
+    const loggedInUserId = decodedToken._id;
 
-    // Extract user details from the decoded token
-    const loggedInUserId = decodedToken._id; // Get the logged-in user ID from the token
-
-    // Get the user from the database using the logged-in userId
-    const loggedInUser = await User.findById(loggedInUserId); // Assuming User model has a findById method
+    /* ----------------------------- Logged-in User ---------------------------- */
+    const loggedInUser = await User.findById(loggedInUserId);
 
     if (!loggedInUser) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check if the logged-in user is an admin
-    const isAdmin = loggedInUser.role === "admin"; // Assuming 'role' field determines user type
+    const isAdmin = loggedInUser.role === "admin";
 
-    // Determine the employeeId: if logged-in user is admin, use the employeeId from the request body, otherwise use the logged-in user ID
+    /* ----------------------------- Employee ID ------------------------------- */
     const employeeId = isAdmin ? req.body.employeeId : loggedInUser.employeeId;
 
-    // Get today's date (ignore time)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set the time to 00:00:00 for comparison
+    if (!employeeId) {
+      return res.status(400).json({ message: "Employee ID is required" });
+    }
 
-    // Check if attendance already exists for today
+    /* ------------------------------- Company Timing -------------------------- */
+    const companyTiming = await CompanyTiming.findOne();
+
+    if (!companyTiming || !companyTiming.startTime) {
+      return res
+        .status(400)
+        .json({ message: "Company start time not configured" });
+    }
+
+    /* -------------------------------- Date ---------------------------------- */
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    /* ------------------------------- Attendance ------------------------------ */
     let attendance = await Attendance.findOne({
       "employee.employeeId": employeeId,
       date: today,
     });
-    console.log("🚀 ~ checkIn ~ attendance:", attendance);
 
-    // If attendance already exists and the user has checked in, return a response
     if (attendance?.checkInStatus === "CheckedIn") {
       return res.status(400).json({ message: "Already checked in today" });
     }
 
-    // If attendance doesn't exist, create a new one
+    /* ----------------------------- Create if not exists ---------------------- */
     if (!attendance) {
       attendance = new Attendance({
         employee: {
           _id: loggedInUser._id,
           employeeId: loggedInUser.employeeId,
-          employeeName: loggedInUser.name, // Assuming 'name' field is present in User model
-          employeeRole: loggedInUser.role, // Assuming 'role' field is present in User model
-          employeeType: loggedInUser.employeeType, // Assuming 'employeeType' field is present in User model
+          employeeName: loggedInUser.name,
+          employeeRole: loggedInUser.role,
+          employeeType: loggedInUser.employeeType,
         },
         date: today,
-        status: "Absent", // Default status
-        checkInStatus: "CheckedOut", // Default to "CheckedOut" since they haven't checked in yet
+        status: "Absent",
+        checkInStatus: "CheckedOut",
       });
     }
 
-    // If the attendance exists and hasn't been checked in, we update it
-    attendance.checkInStatus = "CheckedIn"; // Set checkInStatus to "CheckedIn" when employee checks in
-    attendance.status = "Present"; // Update status to "Present" once they check in
-
-    // Get location data from the request body
+    /* ------------------------------- Check-in Logic -------------------------- */
+    const checkInTime = new Date();
     const { location } = req.body;
 
-    // Log check-in time and location
+    const late = isLateCheckIn(checkInTime, companyTiming.startTime);
+
+    attendance.checkInStatus = "CheckedIn";
+    attendance.status = late ? "Late" : "Present";
+
     attendance.checkIn = {
-      time: new Date(),
+      time: checkInTime,
       location,
     };
 
-    // Save the attendance record (whether it's updated or newly created)
     await attendance.save();
 
-    // Return success message
-    res.json({
-      message: `Checked in successfully ${
-        isAdmin ? `for employee ${employeeId}` : ""
-      }`,
+    /* -------------------------------- Response ------------------------------- */
+    return res.status(200).json({
+      message: late
+        ? "Checked in successfully (Late)"
+        : "Checked in successfully",
       attendance,
     });
   } catch (error) {
-    console.error("Error in checkIn:", error);
-    res.status(500).json({ message: "Server error", error });
+    console.error("Check-in Error:", error);
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error,
+    });
   }
 };
-
-// Check-Out
 
 export const checkOut = async (req: Request, res: Response) => {
   try {
@@ -296,8 +407,6 @@ export const endBreak = async (req: Request, res: Response) => {
 };
 
 // Get all attendance logs (HR/Admin)
-
-// Get all attendance logs (HR/Admin)
 export const getAllAttendance = async (req: Request, res: Response) => {
   try {
     const { search, month, year } = req.query;
@@ -334,27 +443,6 @@ export const getAllAttendance = async (req: Request, res: Response) => {
   }
 };
 
-// export const getAllAttendance = async (req: Request, res: Response) => {
-//   try {
-//     const { search } = req.query;
-
-//     const query: any = {};
-
-//     if (search) {
-//       query.$or = [
-//         { "employee.employeeId": { $regex: search, $options: "i" } },
-//         { "employee.employeeName": { $regex: search, $options: "i" } },
-//       ];
-//     }
-
-//     const logs = await Attendance.find(query).sort({ date: -1 });
-//     res.json(logs);
-//   } catch (error) {
-//     res.status(500).json({ message: "Server error", error });
-//   }
-// };
-
-// Edit Attendance (HR/Admin)
 export const editAttendance = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -540,6 +628,94 @@ export const getUserAttendanceStatus = async (req: Request, res: Response) => {
   }
 };
 
+// export const updateAttendanceAdmin = async (req: Request, res: Response) => {
+//   try {
+//     const { id } = req.params;
+
+//     const attendance = await Attendance.findById(id);
+//     if (!attendance)
+//       return res.status(404).json({ message: "Attendance not found" });
+
+//     if (attendance.locked)
+//       return res
+//         .status(400)
+//         .json({ message: "This attendance is locked and cannot be edited" });
+
+//     const DEFAULT_LOCATION = {
+//       lat: 31.441949367930203,
+//       lng: 74.26074501840554,
+//       address: "BerryBoost – IT Company in Lahore",
+//     };
+
+//     let updated = false;
+
+//     const checkInTime = req.body.checkInTime || req.body?.checkIn?.time;
+//     const checkOutTime = req.body.checkOutTime || req.body?.checkOut?.time;
+
+//     // ================= CHECK-IN =================
+//     if (checkInTime) {
+//       const date = new Date(checkInTime);
+//       if (isNaN(date.getTime()))
+//         return res.status(400).json({ message: "Invalid checkIn time" });
+
+//       attendance.set("checkIn", {
+//         time: date,
+//         location: DEFAULT_LOCATION,
+//       });
+
+//       // If only check-in is updated and check-out is NOT provided
+//       if (!checkOutTime) {
+//         attendance.checkInStatus = "CheckedIn";
+//       }
+
+//       attendance.status = "Present";
+//       updated = true;
+//     }
+
+//     // ================= CHECK-OUT =================
+//     if (checkOutTime) {
+//       const date = new Date(checkOutTime);
+//       if (isNaN(date.getTime()))
+//         return res.status(400).json({ message: "Invalid checkOut time" });
+
+//       attendance.set("checkOut", {
+//         time: date,
+//         location: DEFAULT_LOCATION,
+//       });
+
+//       // If only check-out is updated but check-in already exists
+//       if (checkInTime || attendance.checkIn) {
+//         attendance.checkInStatus = "CheckedOut"; // final state
+//       } else {
+//         // optional: prevent checkout without check-in
+//         return res
+//           .status(400)
+//           .json({ message: "Cannot check out without check-in" });
+//       }
+
+//       updated = true;
+//     }
+
+//     if (!updated)
+//       return res.status(400).json({ message: "No valid fields to update" });
+
+//     await attendance.save();
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Attendance updated successfully",
+//       attendance,
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to update attendance",
+//       error,
+//     });
+//   }
+// };
+
 export const updateAttendanceAdmin = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -553,6 +729,14 @@ export const updateAttendanceAdmin = async (req: Request, res: Response) => {
         .status(400)
         .json({ message: "This attendance is locked and cannot be edited" });
 
+    /* ---------- Company Timing ---------- */
+    const companyTiming = await CompanyTiming.findOne();
+    if (!companyTiming?.startTime) {
+      return res
+        .status(400)
+        .json({ message: "Company start time not configured" });
+    }
+
     const DEFAULT_LOCATION = {
       lat: 31.441949367930203,
       lng: 74.26074501840554,
@@ -564,47 +748,48 @@ export const updateAttendanceAdmin = async (req: Request, res: Response) => {
     const checkInTime = req.body.checkInTime || req.body?.checkIn?.time;
     const checkOutTime = req.body.checkOutTime || req.body?.checkOut?.time;
 
-    // ================= CHECK-IN =================
+    /* ================= CHECK-IN ================= */
     if (checkInTime) {
       const date = new Date(checkInTime);
       if (isNaN(date.getTime()))
         return res.status(400).json({ message: "Invalid checkIn time" });
 
-      attendance.set("checkIn", {
+      attendance.checkIn = {
         time: date,
         location: DEFAULT_LOCATION,
-      });
+      };
 
-      // If only check-in is updated and check-out is NOT provided
-      if (!checkOutTime) {
-        attendance.checkInStatus = "CheckedIn";
-      }
+      attendance.checkInStatus = "CheckedIn";
 
-      attendance.status = "Present";
+      const late = isLateCheckIn(checkInTime, companyTiming.startTime);
+
+      attendance.checkInStatus = "CheckedIn";
+      attendance.status = late ? "Late" : "Present";
+
+      attendance.status = isLateCheckIn(date, companyTiming.startTime)
+        ? "Late"
+        : "Present";
+
       updated = true;
     }
 
-    // ================= CHECK-OUT =================
+    /* ================= CHECK-OUT ================= */
     if (checkOutTime) {
       const date = new Date(checkOutTime);
       if (isNaN(date.getTime()))
         return res.status(400).json({ message: "Invalid checkOut time" });
 
-      attendance.set("checkOut", {
-        time: date,
-        location: DEFAULT_LOCATION,
-      });
-
-      // If only check-out is updated but check-in already exists
-      if (checkInTime || attendance.checkIn) {
-        attendance.checkInStatus = "CheckedOut"; // final state
-      } else {
-        // optional: prevent checkout without check-in
+      if (!attendance.checkIn)
         return res
           .status(400)
           .json({ message: "Cannot check out without check-in" });
-      }
 
+      attendance.checkOut = {
+        time: date,
+        location: DEFAULT_LOCATION,
+      };
+
+      attendance.checkInStatus = "CheckedOut";
       updated = true;
     }
 
@@ -625,5 +810,114 @@ export const updateAttendanceAdmin = async (req: Request, res: Response) => {
       message: "Failed to update attendance",
       error,
     });
+  }
+};
+export const getMonthlyAttendanceGraph = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const year = Number(req.query.year) || new Date().getFullYear();
+
+    // 1️⃣ Total employees (constant for all months)
+    const totalEmployees = await User.countDocuments();
+
+    // 2️⃣ Aggregate present attendance month-wise
+    const attendanceData = await Attendance.aggregate([
+      {
+        $match: {
+          status: "Present",
+          date: {
+            $gte: new Date(`${year}-01-01`),
+            $lte: new Date(`${year}-12-31`),
+          },
+        },
+      },
+      {
+        $group: {
+          _id: { $month: "$date" },
+          presentCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // 3️⃣ Month mapping
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    // 4️⃣ Format response for chart
+    const graphData = monthNames.map((month, index) => {
+      const found = attendanceData.find((item) => item._id === index + 1);
+
+      return {
+        month,
+        Total: totalEmployees,
+        Present: found ? found.presentCount : 0,
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: graphData,
+    });
+  } catch (error) {
+    console.error("Monthly attendance graph error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch attendance graph",
+      error,
+    });
+  }
+};
+
+export const setCompanyTiming = async (req: Request, res: Response) => {
+  try {
+    const { startTime, endTime, lateAfterMinutes = 0 } = req.body;
+
+    if (!startTime || !endTime) {
+      return res.status(400).json({
+        success: false,
+        message: "Start time and end time are required",
+      });
+    }
+
+    // Find existing timing
+    let timing = await CompanyTiming.findOne();
+
+    if (!timing) {
+      // ✅ Create new timing if none exists
+      timing = await CompanyTiming.create({
+        startTime,
+        endTime,
+        lateAfterMinutes,
+      });
+    } else {
+      // ✅ Update existing timing
+      timing.startTime = startTime;
+      timing.endTime = endTime;
+      timing.lateAfterMinutes = lateAfterMinutes;
+      await timing.save();
+    }
+
+    res.json({
+      success: true,
+      message: "Company timing set successfully",
+      timing,
+    });
+  } catch (error) {
+    console.error("Error setting company timing:", error);
+    res.status(500).json({ success: false, message: "Server error", error });
   }
 };
