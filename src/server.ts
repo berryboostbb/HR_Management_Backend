@@ -71,8 +71,9 @@ app.use("/events", eventsRoutes);
 const server = createServer(app);
 
 // Start server
+
 server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
 
 export default app;
