@@ -7,6 +7,7 @@ import {
   deleteUser,
   logout,
   getTodayBirthdays,
+  updatePassword,
 } from "../controllers/authController";
 import { validateBody } from "../validations/validateMiddleware";
 import {
@@ -25,6 +26,7 @@ router.put("/updateUser/:id", validateBody(updateUserSchema), updateUser);
 router.delete("/deleteUser/:id", deleteUser);
 router.post("/logout", logout);
 router.get("/birthdays", getTodayBirthdays);
+router.patch("/updatePassword/:id", updatePassword);
 
 //roles route
 
