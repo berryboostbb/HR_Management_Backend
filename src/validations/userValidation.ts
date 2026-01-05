@@ -66,17 +66,13 @@ export const loginSchema = Joi.object({
 export const updateUserSchema = Joi.object({
   name: Joi.string().min(3).max(50),
   email: Joi.string().email(),
-  password: Joi.string().min(6),
-  gender: Joi.string(),
+  gender: Joi.string().valid("Male", "Female", "Other"),
   phoneNumber: Joi.string().messages({
     "string.pattern.base": "Phone number must be 10-15 digits",
   }),
-
   image: Joi.string(),
   role: Joi.string(),
-
   employeeType: Joi.string().valid("Office Staff", "Field Staff", "Admin"),
-
   department: Joi.string(),
   joiningDate: Joi.date(),
 
@@ -90,14 +86,14 @@ export const updateUserSchema = Joi.object({
     }),
     tax: Joi.number(),
   }),
-
   loanPF: Joi.object({
     loan: Joi.number(),
     pf: Joi.number(),
   }),
-
   DOB: Joi.date(),
   employeeStatus: Joi.string(),
-
   leaveEntitlements: leaveEntitlementsSchema,
+
+  // ✅ Add password as optional
+  password: Joi.string().min(6),
 });

@@ -229,17 +229,15 @@ export const getAllUsers = async (req: Request, res: Response) => {
 
 export const updateUser = async (req: Request, res: Response) => {
   try {
-    const updateData = { ...req.body };
+    const updateData: any = { ...req.body };
 
-    // If the password is part of the update, hash it
+    // NEVER update password here
     if (updateData.password) {
-      const salt = await bcrypt.genSalt(10);
-      updateData.password = await bcrypt.hash(updateData.password, salt);
+      delete updateData.password;
     }
 
-    // If DOB is provided in the update, convert it to Pakistan Standard Time (PST)
+    // Convert DOB to Pakistan Standard Time if provided
     if (updateData.DOB) {
-      // Convert the provided DOB to Pakistan Standard Time (Asia/Karachi)
       updateData.DOB = moment.tz(updateData.DOB, "Asia/Karachi").format(); // Convert to PST (UTC +5)
     }
 
@@ -252,10 +250,46 @@ export const updateUser = async (req: Request, res: Response) => {
 
     res.json(user);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: "Server error", error });
   }
 };
+export const updatePassword = async (req: Request, res: Response) => {
+  try {
+    const { password } = req.body;
+    const userId = req.params.id;
 
+    if (!password) {
+      return res.status(400).json({ message: "Password is required" });
+    }
+
+    if (password.length < 8) {
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 8 characters" });
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Update user password only
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { password: hashedPassword },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({ message: "Password updated successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error", error });
+  }
+};
 export const deleteUser = async (req: Request, res: Response) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
