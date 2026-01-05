@@ -8,7 +8,6 @@ import leaveRouter from "../src/routes/leavesRoutes";
 import payrollRouter from "../src/routes/payrollRoutes";
 import uploadFileRoutes from "../src/routes/uploadRoute";
 import eventsRoutes from "../src/routes/eventRoutes";
-import { PORT } from "./config";
 import { createServer } from "http";
 
 dotenv.config();
@@ -71,8 +70,9 @@ app.use("/events", eventsRoutes);
 const server = createServer(app);
 
 // Start server
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
 
 export default app;
