@@ -8,6 +8,7 @@ import leaveRouter from "../src/routes/leavesRoutes";
 import payrollRouter from "../src/routes/payrollRoutes";
 import uploadFileRoutes from "../src/routes/uploadRoute";
 import eventsRoutes from "../src/routes/eventRoutes";
+import mongoose from "mongoose";
 
 dotenv.config();
 
@@ -31,7 +32,6 @@ app.use(
   })
 );
 
-import mongoose from "mongoose";
 async function ensureDBConnection() {
   if (mongoose.connection.readyState === 1) return;
   await dbConnect();
