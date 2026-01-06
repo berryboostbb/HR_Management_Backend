@@ -173,19 +173,22 @@ export const login = async (req: Request, res: Response) => {
     if (!isMatch)
       return res.status(400).json({ message: "Invalid credentials" });
 
-    // ✅ Replace old token with new one
+    // ✅ Replace old FCM token with new one
     if (fcmToken) {
-      user.set("fcmToken", fcmToken); // explicit set
+      user.fcmToken = fcmToken;
       await user.save();
     }
 
+    // 🔄 Reload user to ensure updated token is sent
+    const freshUser = await User.findById(user._id).select("-password"); // remove password for security
+
     const token = JWTService.signAccessToken(
-      { _id: user._id.toString() },
+      { _id: freshUser!._id.toString() },
       "1d"
     );
-    await JWTService.storeAccessToken(token, user._id);
+    await JWTService.storeAccessToken(token, freshUser!._id);
 
-    res.json({ user, token });
+    res.json({ user: freshUser, token });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ message: "Server error" });
