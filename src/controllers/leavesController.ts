@@ -9,25 +9,19 @@ import Attendance from "../models/attendanceModel";
 import { sendNotification } from "../utils/notifications";
 
 export const applyLeave = async (req: Request, res: Response) => {
-  console.log("🔥 applyLeave API HIT");
-
   try {
     const { employeeId, leaveType, startDate, endDate, reason } = req.body;
 
-    // 1️⃣ Check reason
     if (!reason || reason.trim() === "") {
       return res.status(400).json({ message: "Reason is required" });
     }
 
-    // 2️⃣ Get the employee
     const employee = await User.findOne({ employeeId });
-    if (!employee) {
+    if (!employee)
       return res.status(404).json({ message: "Employee not found" });
-    }
 
     const leaveEntitlements = employee.leaveEntitlements;
 
-    // 3️⃣ Map user-friendly leave type to DB key
     const leaveTypeMap: Record<string, string> = {
       "Casual Leave": "casualLeave",
       "Sick Leave": "sickLeave",
@@ -41,23 +35,20 @@ export const applyLeave = async (req: Request, res: Response) => {
 
     const leaveKey = leaveTypeMap[leaveType];
     if (!leaveKey || !leaveEntitlements[leaveKey]) {
-      return res.status(400).json({
-        message: `Invalid leave type or leave not available: ${leaveType}`,
-      });
+      return res
+        .status(400)
+        .json({ message: `Invalid leave type: ${leaveType}` });
     }
 
-    // 4️⃣ Calculate requested leave days
     const start = moment(startDate).startOf("day");
     const end = moment(endDate).startOf("day");
     const requestedDays = end.diff(start, "days") + 1;
 
-    if (requestedDays <= 0) {
+    if (requestedDays <= 0)
       return res
         .status(400)
         .json({ message: "End date must be after start date" });
-    }
 
-    // 5️⃣ Check if user has enough leave balance
     const availableLeave =
       leaveEntitlements[leaveKey].total - leaveEntitlements[leaveKey].consumed;
 
@@ -67,7 +58,7 @@ export const applyLeave = async (req: Request, res: Response) => {
       });
     }
 
-    // 6️⃣ Optional: Check overlapping approved leaves
+    // Check overlapping leaves
     const overlapping = await Leave.findOne({
       employeeId,
       status: "Approved",
@@ -78,13 +69,11 @@ export const applyLeave = async (req: Request, res: Response) => {
       ],
     });
 
-    if (overlapping) {
+    if (overlapping)
       return res
         .status(400)
         .json({ message: "Leave overlaps with existing approved leave" });
-    }
 
-    // 7️⃣ Create the leave
     const leave = await Leave.create({
       employeeId,
       employeeName: employee.name,
@@ -95,23 +84,22 @@ export const applyLeave = async (req: Request, res: Response) => {
       status: "Pending",
     });
 
-    console.log("📢 Sending notification to admins");
-
+    // Send notification to admins
     try {
-      // 8️⃣ Find all admins
       const admins = await User.find({
         role: "admin",
-        fcmTokens: { $exists: true, $ne: [] },
+        fcmToken: { $exists: true, $ne: "" },
       });
 
-      // Collect all FCM tokens
-      const adminTokens: string[] = admins.flatMap((admin) => admin.fcmTokens);
+      const adminTokens: string[] = admins
+        .map((admin) => admin.fcmToken)
+        .filter(Boolean);
 
       if (adminTokens.length > 0) {
         await sendNotification(
           adminTokens,
           "Leave Applied",
-          `${employee.name} applied for ${leaveType} .`
+          `${employee.name} applied for ${leaveType}.`
         );
         console.log("✅ Leave notification sent to admins successfully");
       } else {
@@ -121,7 +109,6 @@ export const applyLeave = async (req: Request, res: Response) => {
       console.error("Failed to send leave notification:", notifError);
     }
 
-    // 9️⃣ Respond to the client
     res.status(201).json({ message: "Leave applied successfully", leave });
   } catch (error) {
     console.error("Apply Leave Error:", error);

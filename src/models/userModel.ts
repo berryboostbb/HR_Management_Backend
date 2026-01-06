@@ -1,7 +1,6 @@
 import mongoose, { Schema, Document } from "mongoose";
 import bcrypt from "bcrypt";
 
-// Incentive & SalaryStructure interface
 interface IIncentive {
   flue: number;
   medical: number;
@@ -15,13 +14,15 @@ interface ISalaryStructure {
   tax?: number;
   deductions: number;
 }
+
 interface ILoanPF {
   loan: number;
   pf: number;
 }
+
 interface ILeaveType {
-  total: number; // Total allowed leaves
-  consumed: number; // Leaves already taken
+  total: number;
+  consumed: number;
 }
 
 interface ILeaveEntitlements {
@@ -45,7 +46,7 @@ export interface IUser extends Document {
   loanPF: ILoanPF;
   DOB: Date;
   image: string;
-  fcmTokens?: string[];
+  fcmToken?: string; // ✅ single string
   employeeStatus: string;
   leaveEntitlements: ILeaveEntitlements;
   email: string;
@@ -64,10 +65,7 @@ const UserSchema: Schema<IUser> = new Schema(
     image: { type: String, required: true },
     phoneNumber: { type: String, required: true },
     role: { type: String, required: true },
-    employeeType: {
-      type: String,
-      required: true,
-    },
+    employeeType: { type: String, required: true },
     department: { type: String, required: true },
     joiningDate: { type: Date, required: true },
     salaryStructure: {
@@ -76,56 +74,31 @@ const UserSchema: Schema<IUser> = new Schema(
         flue: { type: Number, required: true, default: 0 },
         medical: { type: Number, required: true, default: 0 },
         others: { type: Number, required: true, default: 0 },
-        deductions: { type: Number, required: true, default: 0 },
       },
       gross: { type: Number },
-      tax: { type: Number, required: false, default: 0 },
+      tax: { type: Number, default: 0 },
+      deductions: { type: Number, default: 0 },
     },
     loanPF: {
-      loan: { type: Number, required: true, default: 0 },
-      pf: { type: Number, required: true, default: 0 },
+      loan: { type: Number, default: 0 },
+      pf: { type: Number, default: 0 },
     },
     DOB: { type: Date, required: true },
     employeeStatus: { type: String, required: true },
-    fcmTokens: { type: [String], default: [] },
+    fcmToken: { type: String }, // ✅ single string
     leaveEntitlements: {
-      casualLeave: {
-        type: {
-          total: { type: Number, default: 0 },
-          consumed: { type: Number, default: 0 },
-        },
-        default: {},
-      },
-      sickLeave: {
-        type: {
-          total: { type: Number, default: 0 },
-          consumed: { type: Number, default: 0 },
-        },
-        default: {},
-      },
-      annualLeave: {
-        type: {
-          total: { type: Number, default: 0 },
-          consumed: { type: Number, default: 0 },
-        },
-        default: {},
-      },
+      casualLeave: { type: { total: Number, consumed: Number }, default: {} },
+      sickLeave: { type: { total: Number, consumed: Number }, default: {} },
+      annualLeave: { type: { total: Number, consumed: Number }, default: {} },
       maternityLeave: {
-        type: {
-          total: { type: Number, default: 0 },
-          consumed: { type: Number, default: 0 },
-        },
+        type: { total: Number, consumed: Number },
         default: {},
       },
       paternityLeave: {
-        type: {
-          total: { type: Number, default: 0 },
-          consumed: { type: Number, default: 0 },
-        },
+        type: { total: Number, consumed: Number },
         default: {},
       },
     },
-
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
   },

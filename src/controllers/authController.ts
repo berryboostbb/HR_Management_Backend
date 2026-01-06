@@ -163,7 +163,6 @@ export const login = async (req: Request, res: Response) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-    // Optional: check employee status
     if (user.employeeStatus === "Inactive") {
       return res
         .status(403)
@@ -174,9 +173,9 @@ export const login = async (req: Request, res: Response) => {
     if (!isMatch)
       return res.status(400).json({ message: "Invalid credentials" });
 
-    // Save FCM token if provided
-    if (fcmToken && !user.fcmTokens.includes(fcmToken)) {
-      user.fcmTokens.push(fcmToken);
+    // ✅ Replace old token with new one
+    if (fcmToken) {
+      user.set("fcmToken", fcmToken); // explicit set
       await user.save();
     }
 
@@ -186,7 +185,6 @@ export const login = async (req: Request, res: Response) => {
     );
     await JWTService.storeAccessToken(token, user._id);
 
-    // ✅ Always return user and token
     res.json({ user, token });
   } catch (error) {
     console.error("Login error:", error);

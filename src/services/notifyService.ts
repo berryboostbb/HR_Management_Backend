@@ -2,10 +2,10 @@ import User from "../models/userModel";
 import { sendNotification } from "../utils/notifications";
 export const notifyUser = async (userId: string) => {
   const user = await User.findById(userId);
-  if (!user || !user.fcmTokens || user.fcmTokens.length === 0) return;
+  if (!user || !user.fcmToken) return;
 
   const response = await sendNotification(
-    user.fcmTokens,
+    user.fcmToken,
     "Hello!",
     "Your FCM integration is working!",
     { key: "value" }
