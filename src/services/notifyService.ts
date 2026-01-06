@@ -1,6 +1,5 @@
 import User from "../models/userModel";
 import { sendNotification } from "../utils/notifications";
-
 export const notifyUser = async (userId: string) => {
   const user = await User.findById(userId);
   if (!user || !user.fcmTokens || user.fcmTokens.length === 0) return;
