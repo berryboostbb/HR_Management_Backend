@@ -45,6 +45,7 @@ export interface IUser extends Document {
   loanPF: ILoanPF;
   DOB: Date;
   image: string;
+  fcmTokens?: string[];
   employeeStatus: string;
   leaveEntitlements: ILeaveEntitlements;
   email: string;
@@ -86,6 +87,7 @@ const UserSchema: Schema<IUser> = new Schema(
     },
     DOB: { type: Date, required: true },
     employeeStatus: { type: String, required: true },
+    fcmTokens: { type: [String], default: [] },
     leaveEntitlements: {
       casualLeave: {
         type: {

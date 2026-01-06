@@ -12,6 +12,7 @@ import {
   updateAttendanceAdmin,
   getMonthlyAttendanceGraph,
   setCompanyTiming,
+  getCompanyTiming,
 } from "../controllers/attendanceController";
 
 import {
@@ -42,5 +43,6 @@ router.get("/status", auth, getUserAttendanceStatus);
 router.post("/createDailyAttendance", auth, createDailyAttendance);
 router.get("/getMonthlyAttendanceGraph", getMonthlyAttendanceGraph);
 router.post("/setCompanyTiming", setCompanyTiming);
+router.get("/getCompanyTiming", getCompanyTiming);
 
 export default router;

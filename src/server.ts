@@ -8,6 +8,7 @@ import leaveRouter from "../src/routes/leavesRoutes";
 import payrollRouter from "../src/routes/payrollRoutes";
 import uploadFileRoutes from "../src/routes/uploadRoute";
 import eventsRoutes from "../src/routes/eventRoutes";
+import notificationRoutes from "../src/routes/notificationRoutes";
 import { createServer } from "http";
 
 dotenv.config();
@@ -66,6 +67,7 @@ app.use("/leave", leaveRouter);
 app.use("/payroll", payrollRouter);
 app.use("/upload", uploadFileRoutes);
 app.use("/events", eventsRoutes);
+app.use("/notification", notificationRoutes);
 
 const server = createServer(app);
 

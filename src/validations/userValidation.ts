@@ -57,9 +57,11 @@ export const registerSchema = Joi.object({
 });
 
 // Validation for login
+
 export const loginSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().required(),
+  fcmToken: Joi.string().optional(), // FCM token is optional
 });
 
 // Validation for updating an admin

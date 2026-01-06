@@ -158,18 +158,26 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, fcmToken } = req.body;
+
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
+    // Optional: check employee status
     if (user.employeeStatus === "Inactive") {
       return res
         .status(403)
         .json({ message: "Your account is inactive. Please contact admin." });
     }
+
     const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
+    if (!isMatch)
       return res.status(400).json({ message: "Invalid credentials" });
+
+    // Save FCM token if provided
+    if (fcmToken && !user.fcmTokens.includes(fcmToken)) {
+      user.fcmTokens.push(fcmToken);
+      await user.save();
     }
 
     const token = JWTService.signAccessToken(
@@ -178,9 +186,11 @@ export const login = async (req: Request, res: Response) => {
     );
     await JWTService.storeAccessToken(token, user._id);
 
+    // ✅ Always return user and token
     res.json({ user, token });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 

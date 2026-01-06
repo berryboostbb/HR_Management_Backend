@@ -177,40 +177,34 @@ export const checkIn = async (req: Request, res: Response) => {
   try {
     /* -------------------------------- Token -------------------------------- */
     const token = req.headers.authorization?.split(" ")[1];
-
-    if (!token) {
+    if (!token)
       return res
         .status(401)
         .json({ message: "Authorization token is missing" });
-    }
 
     const decodedToken = JWTService.verifyAccessToken(token);
     const loggedInUserId = decodedToken._id;
 
     /* ----------------------------- Logged-in User ---------------------------- */
     const loggedInUser = await User.findById(loggedInUserId);
-
-    if (!loggedInUser) {
+    if (!loggedInUser)
       return res.status(404).json({ message: "User not found" });
-    }
 
     const isAdmin = loggedInUser.role === "admin";
 
     /* ----------------------------- Employee ID ------------------------------- */
     const employeeId = isAdmin ? req.body.employeeId : loggedInUser.employeeId;
-
-    if (!employeeId) {
+    if (!employeeId)
       return res.status(400).json({ message: "Employee ID is required" });
-    }
 
     /* ------------------------------- Company Timing -------------------------- */
     const companyTiming = await CompanyTiming.findOne();
-
-    if (!companyTiming || !companyTiming.startTime) {
+    if (!companyTiming || !companyTiming.startTime)
       return res
         .status(400)
         .json({ message: "Company start time not configured" });
-    }
+
+    const lateAfterMinutes = companyTiming.lateAfterMinutes || 0; // grace period
 
     /* -------------------------------- Date ---------------------------------- */
     const today = new Date();
@@ -246,10 +240,21 @@ export const checkIn = async (req: Request, res: Response) => {
     const checkInTime = new Date();
     const { location } = req.body;
 
-    const late = isLateCheckIn(checkInTime, companyTiming.startTime);
+    // Convert company start time to Date object
+    const [hours, minutes] = companyTiming.startTime.split(":").map(Number);
+    const companyStartDate = new Date(today);
+    companyStartDate.setHours(hours, minutes, 0, 0);
+
+    // Add lateAfterMinutes to company start time
+    const lateThreshold = new Date(
+      companyStartDate.getTime() + lateAfterMinutes * 60000
+    );
+
+    // Determine Late or Present
+    const isLate = checkInTime > lateThreshold;
 
     attendance.checkInStatus = "CheckedIn";
-    attendance.status = late ? "Late" : "Present";
+    attendance.status = isLate ? "Late" : "Present";
 
     attendance.checkIn = {
       time: checkInTime,
@@ -260,7 +265,7 @@ export const checkIn = async (req: Request, res: Response) => {
 
     /* -------------------------------- Response ------------------------------- */
     return res.status(200).json({
-      message: late
+      message: isLate
         ? "Checked in successfully (Late)"
         : "Checked in successfully",
       attendance,
@@ -750,26 +755,40 @@ export const updateAttendanceAdmin = async (req: Request, res: Response) => {
 
     /* ================= CHECK-IN ================= */
     if (checkInTime) {
-      const date = new Date(checkInTime);
-      if (isNaN(date.getTime()))
-        return res.status(400).json({ message: "Invalid checkIn time" });
+      const checkInDate = new Date(checkInTime);
+      if (isNaN(checkInDate.getTime()))
+        return res.status(400).json({ message: "Invalid check-in time" });
 
       attendance.checkIn = {
-        time: date,
+        time: checkInDate,
         location: DEFAULT_LOCATION,
       };
 
+      // Convert company start time to Date (assuming it's stored as "HH:mm")
+      const today = new Date();
+      const [hours, minutes] = companyTiming.startTime.split(":").map(Number);
+      const companyStartDate = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+        hours,
+        minutes
+      );
+
+      // Add lateAfterMinutes to company start time
+      const lateAfterMinutes = companyTiming.lateAfterMinutes || 0; // default 0 if not set
+      const lateThreshold = new Date(
+        companyStartDate.getTime() + lateAfterMinutes * 60000
+      ); // 60000ms = 1 min
+
+      // Determine Present or Late
+      if (checkInDate > lateThreshold) {
+        attendance.status = "Late";
+      } else {
+        attendance.status = "Present";
+      }
+
       attendance.checkInStatus = "CheckedIn";
-
-      const late = isLateCheckIn(checkInTime, companyTiming.startTime);
-
-      attendance.checkInStatus = "CheckedIn";
-      attendance.status = late ? "Late" : "Present";
-
-      attendance.status = isLateCheckIn(date, companyTiming.startTime)
-        ? "Late"
-        : "Present";
-
       updated = true;
     }
 
@@ -777,7 +796,7 @@ export const updateAttendanceAdmin = async (req: Request, res: Response) => {
     if (checkOutTime) {
       const date = new Date(checkOutTime);
       if (isNaN(date.getTime()))
-        return res.status(400).json({ message: "Invalid checkOut time" });
+        return res.status(400).json({ message: "Invalid check-out time" });
 
       if (!attendance.checkIn)
         return res
@@ -812,6 +831,7 @@ export const updateAttendanceAdmin = async (req: Request, res: Response) => {
     });
   }
 };
+
 export const getMonthlyAttendanceGraph = async (
   req: Request,
   res: Response
@@ -877,6 +897,30 @@ export const getMonthlyAttendanceGraph = async (
     res.status(500).json({
       success: false,
       message: "Failed to fetch attendance graph",
+      error,
+    });
+  }
+};
+
+export const getCompanyTiming = async (req: Request, res: Response) => {
+  try {
+    const timing = await CompanyTiming.findOne();
+    if (!timing) {
+      return res.status(404).json({
+        success: false,
+        message: "No company timing set yet",
+      });
+    }
+
+    res.json({
+      success: true,
+      timing,
+    });
+  } catch (error) {
+    console.error("Error fetching company timing:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
       error,
     });
   }

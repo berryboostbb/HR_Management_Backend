@@ -5,7 +5,12 @@ import User from "../models/userModel";
 import Attendance from "../models/attendanceModel";
 
 // Apply for leave
+
+import { sendNotification } from "../utils/notifications";
+
 export const applyLeave = async (req: Request, res: Response) => {
+  console.log("🔥 applyLeave API HIT");
+
   try {
     const { employeeId, leaveType, startDate, endDate, reason } = req.body;
 
@@ -45,6 +50,7 @@ export const applyLeave = async (req: Request, res: Response) => {
     const start = moment(startDate).startOf("day");
     const end = moment(endDate).startOf("day");
     const requestedDays = end.diff(start, "days") + 1;
+
     if (requestedDays <= 0) {
       return res
         .status(400)
@@ -54,6 +60,7 @@ export const applyLeave = async (req: Request, res: Response) => {
     // 5️⃣ Check if user has enough leave balance
     const availableLeave =
       leaveEntitlements[leaveKey].total - leaveEntitlements[leaveKey].consumed;
+
     if (requestedDays > availableLeave) {
       return res.status(400).json({
         message: `Not enough ${leaveType}. Available: ${availableLeave}, requested: ${requestedDays}`,
@@ -67,10 +74,7 @@ export const applyLeave = async (req: Request, res: Response) => {
       $or: [
         { startDate: { $lte: endDate, $gte: startDate } },
         { endDate: { $lte: endDate, $gte: startDate } },
-        {
-          startDate: { $lte: startDate },
-          endDate: { $gte: endDate },
-        }, // covers leave fully inside another
+        { startDate: { $lte: startDate }, endDate: { $gte: endDate } },
       ],
     });
 
@@ -84,13 +88,40 @@ export const applyLeave = async (req: Request, res: Response) => {
     const leave = await Leave.create({
       employeeId,
       employeeName: employee.name,
-      leaveType, // keep the user-friendly name
+      leaveType,
       startDate,
       endDate,
       reason,
-      status: "Pending", // default status
+      status: "Pending",
     });
 
+    console.log("📢 Sending notification to admins");
+
+    try {
+      // 8️⃣ Find all admins
+      const admins = await User.find({
+        role: "admin",
+        fcmTokens: { $exists: true, $ne: [] },
+      });
+
+      // Collect all FCM tokens
+      const adminTokens: string[] = admins.flatMap((admin) => admin.fcmTokens);
+
+      if (adminTokens.length > 0) {
+        await sendNotification(
+          adminTokens,
+          "Leave Applied",
+          `${employee.name} applied for ${leaveType} .`
+        );
+        console.log("✅ Leave notification sent to admins successfully");
+      } else {
+        console.log("⚠️ No admin FCM tokens found");
+      }
+    } catch (notifError) {
+      console.error("Failed to send leave notification:", notifError);
+    }
+
+    // 9️⃣ Respond to the client
     res.status(201).json({ message: "Leave applied successfully", leave });
   } catch (error) {
     console.error("Apply Leave Error:", error);
