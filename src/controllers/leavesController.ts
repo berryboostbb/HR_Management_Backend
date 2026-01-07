@@ -4,8 +4,6 @@ import moment from "moment";
 import User from "../models/userModel";
 import Attendance from "../models/attendanceModel";
 
-// Apply for leave
-
 import { sendNotification } from "../utils/notifications";
 
 export const applyLeave = async (req: Request, res: Response) => {

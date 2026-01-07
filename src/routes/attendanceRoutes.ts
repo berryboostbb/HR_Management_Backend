@@ -37,7 +37,7 @@ router.put(
   validateBody(editAttendanceSchema),
   editAttendance
 );
-router.put("/updateAttendanceAdmin/:id", updateAttendanceAdmin);
+router.put("/updateAttendanceAdmin/:id", auth, updateAttendanceAdmin);
 router.get("/status", auth, getUserAttendanceStatus);
 
 router.post("/createDailyAttendance", auth, createDailyAttendance);

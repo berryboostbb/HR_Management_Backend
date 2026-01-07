@@ -471,21 +471,40 @@ export const editAttendance = async (req: Request, res: Response) => {
 // Get attendance summary (HR/Admin)
 export const getAttendanceSummary = async (req: Request, res: Response) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // start of today
+    // ─── TODAY RANGE ─────────────────────────────────────────
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1); // start of yesterday
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
 
+    // ─── YESTERDAY RANGE ─────────────────────────────────────
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(todayStart.getDate() - 1);
+
+    const yesterdayEnd = new Date(todayEnd);
+    yesterdayEnd.setDate(todayEnd.getDate() - 1);
+
+    // ─── USER STATS ──────────────────────────────────────────
     const totalEmployees = await Account.countDocuments();
     const totalNewUsers = await Account.countDocuments({
-      createdAt: { $gte: today },
+      createdAt: { $gte: todayStart },
     });
 
-    // Function to get attendance counts for a given date
-    const getAttendanceCounts = async (date) => {
+    // ─── ATTENDANCE COUNTER (FIXED) ──────────────────────────
+    const getAttendanceCounts = async (
+      start: Date,
+      end: Date
+    ): Promise<Record<string, number>> => {
       const summary = await Attendance.aggregate([
-        { $match: { date } },
+        {
+          $match: {
+            date: {
+              $gte: start,
+              $lte: end,
+            },
+          },
+        },
         {
           $group: {
             _id: "$status",
@@ -494,11 +513,11 @@ export const getAttendanceSummary = async (req: Request, res: Response) => {
         },
       ]);
 
-      const counts = {
+      const counts: Record<string, number> = {
         Present: 0,
         Absent: 0,
-        Leave: 0,
         Late: 0,
+        "On Leave": 0,
       };
 
       summary.forEach((item) => {
@@ -508,43 +527,43 @@ export const getAttendanceSummary = async (req: Request, res: Response) => {
       return counts;
     };
 
-    const todayCounts = await getAttendanceCounts(today);
-    const yesterdayCounts = await getAttendanceCounts(yesterday);
+    const todayCounts = await getAttendanceCounts(todayStart, todayEnd);
+    const yesterdayCounts = await getAttendanceCounts(
+      yesterdayStart,
+      yesterdayEnd
+    );
 
-    // Helper to calculate percentage change
-    const calcPercentageChange = (todayValue, yesterdayValue) => {
-      if (yesterdayValue === 0) return todayValue === 0 ? 0 : 100;
-      return ((todayValue - yesterdayValue) / yesterdayValue) * 100;
+    // ─── PERCENTAGE CALC ─────────────────────────────────────
+    const calcChange = (today: number, yesterday: number) => {
+      if (yesterday === 0) return today === 0 ? 0 : 100;
+      return Math.round(((today - yesterday) / yesterday) * 100);
     };
 
-    const response = {
-      totalEmployees,
-      totalNewUsers,
-      present: todayCounts.Present,
-      presentChange: calcPercentageChange(
-        todayCounts.Present,
-        yesterdayCounts.Present
-      ),
-      absent: todayCounts.Absent,
-      absentChange: calcPercentageChange(
-        todayCounts.Absent,
-        yesterdayCounts.Absent
-      ),
-      leave: todayCounts.Leave,
-      leaveChange: calcPercentageChange(
-        todayCounts.Leave,
-        yesterdayCounts.Leave
-      ),
-      late: todayCounts.Late,
-      lateChange: calcPercentageChange(todayCounts.Late, yesterdayCounts.Late),
-    };
-
-    res.status(200).json({
+    // ─── RESPONSE ────────────────────────────────────────────
+    return res.status(200).json({
       success: true,
-      data: response,
+      data: {
+        totalEmployees,
+        totalNewUsers,
+
+        present: todayCounts.Present,
+        presentChange: calcChange(todayCounts.Present, yesterdayCounts.Present),
+
+        absent: todayCounts.Absent,
+        absentChange: calcChange(todayCounts.Absent, yesterdayCounts.Absent),
+
+        late: todayCounts.Late,
+        lateChange: calcChange(todayCounts.Late, yesterdayCounts.Late),
+
+        leave: todayCounts["On Leave"],
+        leaveChange: calcChange(
+          todayCounts["On Leave"],
+          yesterdayCounts["On Leave"]
+        ),
+      },
     });
-  } catch (error) {
-    res.status(500).json({
+  } catch (error: any) {
+    return res.status(500).json({
       success: false,
       message: "Failed to fetch attendance summary",
       error: error.message,
