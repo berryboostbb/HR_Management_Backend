@@ -84,7 +84,6 @@ export const applyLeave = async (req: Request, res: Response) => {
       status: "Pending",
     });
 
-    // Send notification to admins
     try {
       const admins = await User.find({
         role: "admin",
