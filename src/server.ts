@@ -3,12 +3,12 @@ import cors from "cors";
 import dotenv from "dotenv";
 import dbConnect from "./database";
 import authRouter from "./routes/authRoutes";
-import attendanceRouter from "../src/routes/attendanceRoutes";
-import leaveRouter from "../src/routes/leavesRoutes";
-import payrollRouter from "../src/routes/payrollRoutes";
-import uploadFileRoutes from "../src/routes/uploadRoute";
-import eventsRoutes from "../src/routes/eventRoutes";
-import notificationRoutes from "../src/routes/notificationRoutes";
+import attendanceRouter from "./routes/attendanceRoutes";
+import leaveRouter from "./routes/leavesRoutes";
+import payrollRouter from "./routes/payrollRoutes";
+import uploadFileRoutes from "./routes/uploadRoute";
+import eventsRoutes from "./routes/eventRoutes";
+import notificationRoutes from "./routes/notificationRoutes";
 import { createServer } from "http";
 
 dotenv.config();
