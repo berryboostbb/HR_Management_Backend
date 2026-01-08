@@ -320,27 +320,23 @@ export const logout = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Server error", error });
   }
 };
+
 export const getTodayBirthdays = async (req: Request, res: Response) => {
   try {
     const today = new Date();
 
-    // Get the current date and month in UTC
-    const todayDay = today.getUTCDate();
-    const todayMonth = today.getUTCMonth() + 1; // getUTCMonth() returns month from 0 to 11, so we add 1
+    const todayDay = today.getDate(); // local day
+    const todayMonth = today.getMonth() + 1; // local month
 
-    // Fetch all users (with DOB, etc.)
+    // Fetch users whose DOB matches today (in UTC or local)
     const allUsers = await User.find().select(
       "name email employeeId role department image DOB employeeType"
     );
 
-    // Filter users based on today's month and day in UTC
     const birthdays = allUsers.filter((user) => {
       const dob = new Date(user.DOB);
-
-      // Compare the day and month in UTC
-      const day = dob.getUTCDate();
-      const month = dob.getUTCMonth() + 1; // getUTCMonth() returns month from 0 to 11, so we add 1
-
+      const day = dob.getDate(); // local day
+      const month = dob.getMonth() + 1; // local month
       return day === todayDay && month === todayMonth;
     });
 
@@ -350,6 +346,7 @@ export const getTodayBirthdays = async (req: Request, res: Response) => {
       data: birthdays,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       message: "Failed to fetch today's birthdays",
       error,

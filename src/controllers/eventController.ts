@@ -4,8 +4,9 @@ import {
   createEventSchema,
   updateEventSchema,
 } from "../validations/eventValidation";
+import User from "../models/userModel";
+import { sendNotification } from "../utils/notifications";
 
-// Create Event
 export const createEvent = async (req: Request, res: Response) => {
   try {
     const { error, value } = createEventSchema.validate(req.body);
@@ -13,16 +14,38 @@ export const createEvent = async (req: Request, res: Response) => {
       return res
         .status(400)
         .json({ message: "Validation error", errors: error.details });
-
     const event = new Event(value);
     await event.save();
+    try {
+      const medicalRepTokens = await User.find({
+        role: "mr",
+        fcmToken: { $exists: true, $ne: "" },
+      }).select("fcmToken");
+
+      const tokens: string[] = medicalRepTokens.map((user) => user.fcmToken);
+
+      if (tokens.length > 0) {
+        await sendNotification(
+          tokens,
+          "New Event Created",
+          `A new event "${event.heading}" has been created.`
+        );
+        console.log("✅ Event notification sent to medical reps successfully");
+      } else {
+        console.log("⚠️ No medical rep FCM tokens found");
+      }
+    } catch (notifError) {
+      console.error("Failed to send event notifications:", notifError);
+    }
+
+    // 4️⃣ Respond to API
     res.status(201).json({ message: "Event created successfully", event });
   } catch (err) {
+    console.error("Create Event Error:", err);
     res.status(500).json({ message: "Server error", error: err });
   }
 };
 
-// Get All Events
 export const getAllEvents = async (req: Request, res: Response) => {
   try {
     const { category, search } = req.query as any;
