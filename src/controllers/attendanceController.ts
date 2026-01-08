@@ -774,38 +774,37 @@ export const updateAttendanceAdmin = async (req: Request, res: Response) => {
 
     /* ================= CHECK-IN ================= */
     if (checkInTime) {
-      const checkInDate = new Date(checkInTime);
-      if (isNaN(checkInDate.getTime()))
+      const checkInMoment = moment
+        .tz(checkInTime, "Asia/Karachi")
+        .seconds(0)
+        .milliseconds(0);
+
+      if (!checkInMoment.isValid())
         return res.status(400).json({ message: "Invalid check-in time" });
 
       attendance.checkIn = {
-        time: checkInDate,
+        time: checkInMoment.toDate(),
         location: DEFAULT_LOCATION,
       };
 
-      // Convert company start time to Date (assuming it's stored as "HH:mm")
-      const today = new Date();
+      // Company start time (PKT)
       const [hours, minutes] = companyTiming.startTime.split(":").map(Number);
-      const companyStartDate = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate(),
-        hours,
-        minutes
-      );
 
-      // Add lateAfterMinutes to company start time
-      const lateAfterMinutes = companyTiming.lateAfterMinutes || 0; // default 0 if not set
-      const lateThreshold = new Date(
-        companyStartDate.getTime() + lateAfterMinutes * 60000
-      ); // 60000ms = 1 min
+      const companyStartMoment = moment
+        .tz("Asia/Karachi")
+        .startOf("day")
+        .hour(hours)
+        .minute(minutes);
 
-      // Determine Present or Late
-      if (checkInDate > lateThreshold) {
-        attendance.status = "Late";
-      } else {
-        attendance.status = "Present";
-      }
+      const lateAfterMinutes = companyTiming.lateAfterMinutes || 0;
+      const lateThreshold = companyStartMoment
+        .clone()
+        .add(lateAfterMinutes, "minutes");
+
+      // ✅ Correct Late / Present calculation
+      attendance.status = checkInMoment.isAfter(lateThreshold)
+        ? "Late"
+        : "Present";
 
       attendance.checkInStatus = "CheckedIn";
       updated = true;
@@ -813,8 +812,12 @@ export const updateAttendanceAdmin = async (req: Request, res: Response) => {
 
     /* ================= CHECK-OUT ================= */
     if (checkOutTime) {
-      const date = new Date(checkOutTime);
-      if (isNaN(date.getTime()))
+      const checkOutMoment = moment
+        .tz(checkOutTime, "Asia/Karachi")
+        .seconds(0)
+        .milliseconds(0);
+
+      if (!checkOutMoment.isValid())
         return res.status(400).json({ message: "Invalid check-out time" });
 
       if (!attendance.checkIn)
@@ -823,7 +826,7 @@ export const updateAttendanceAdmin = async (req: Request, res: Response) => {
           .json({ message: "Cannot check out without check-in" });
 
       attendance.checkOut = {
-        time: date,
+        time: checkOutMoment.toDate(),
         location: DEFAULT_LOCATION,
       };
 
@@ -836,14 +839,14 @@ export const updateAttendanceAdmin = async (req: Request, res: Response) => {
 
     await attendance.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Attendance updated successfully",
       attendance,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
+    console.error("Update Attendance Admin Error:", error);
+    return res.status(500).json({
       success: false,
       message: "Failed to update attendance",
       error,
