@@ -419,10 +419,9 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
           });
           await attendance.save();
         }
+        console.log("Leave status updated:", status, attendance);
       }
     }
-
-    console.log("Leave status updated:", status, leave);
 
     return res.json({ message: `Leave ${status}`, leave });
   } catch (error) {
