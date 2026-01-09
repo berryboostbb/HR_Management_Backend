@@ -422,6 +422,8 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
       }
     }
 
+    console.log("Leave status updated:", status, leave);
+
     return res.json({ message: `Leave ${status}`, leave });
   } catch (error) {
     console.error("Update Leave Status Error:", error);
