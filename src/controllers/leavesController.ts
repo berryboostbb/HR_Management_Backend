@@ -387,10 +387,21 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
           .toDate();
         const dayEnd = moment(startDate).add(i, "days").endOf("day").toDate();
 
+        const day = moment
+          .utc(startDate)
+          .add(i, "days")
+          .startOf("day")
+          .toDate();
+
         let attendance = await Attendance.findOne({
           "employee.employeeId": leave.employeeId,
-          date: { $gte: dayStart, $lte: dayEnd },
+          date: day,
         });
+
+        // let attendance = await Attendance.findOne({
+        //   "employee.employeeId": leave.employeeId,
+        //   date: { $gte: dayStart, $lte: dayEnd },
+        // });
 
         if (attendance) {
           attendance.status = "On Leave";
