@@ -73,7 +73,6 @@ export const createDailyAttendance = async (req: Request, res: Response) => {
         console.log(`Attendance created for ${employee.name}`);
       }
 
-      // 4️⃣ Send notification to all employees (if they have FCM token)
       if (employee.fcmToken) {
         try {
           await sendNotification(

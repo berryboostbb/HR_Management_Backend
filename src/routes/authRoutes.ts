@@ -8,6 +8,7 @@ import {
   logout,
   getTodayBirthdays,
   updatePassword,
+  updateEmployeeStatus,
 } from "../controllers/authController";
 import { validateBody } from "../validations/validateMiddleware";
 import {
@@ -16,6 +17,7 @@ import {
   updateUserSchema,
 } from "../validations/userValidation";
 import { getRoles } from "../controllers/roleController";
+import { auth } from "firebase-admin";
 
 const router = express.Router();
 
@@ -27,8 +29,7 @@ router.delete("/deleteUser/:id", deleteUser);
 router.post("/logout", logout);
 router.get("/birthdays", getTodayBirthdays);
 router.patch("/updatePassword/:id", updatePassword);
-
-//roles route
+router.patch("/employee-status/:id", updateEmployeeStatus);
 
 router.get("/getRoles", getRoles);
 

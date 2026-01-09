@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import User from "../models/userModel";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
@@ -6,6 +6,7 @@ import JWTService from "../services/JWTServices";
 import moment from "moment-timezone";
 import bcrypt from "bcryptjs";
 import { sendNotification } from "../utils/notifications";
+import AccessToken from "../models/accessToken";
 
 dotenv.config();
 
@@ -289,6 +290,51 @@ export const updateUser = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error", error });
+  }
+};
+
+export const updateEmployeeStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { employeeStatus } = req.body;
+
+    if (!employeeStatus || !["Active", "Inactive"].includes(employeeStatus)) {
+      return res.status(400).json({ message: "Invalid employee status" });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const previousStatus = user.employeeStatus;
+
+    // ✅ Update status
+    user.employeeStatus = employeeStatus;
+    await user.save();
+
+    // 🔥 EXPIRE TOKEN ONLY WHEN MOVING TO INACTIVE
+    if (previousStatus !== "Inactive" && employeeStatus === "Inactive") {
+      await AccessToken.deleteMany({ userId: user._id });
+
+      // 🔔 Notify user
+      if (user.fcmToken) {
+        await sendNotification(
+          [user.fcmToken],
+          "Account Disabled ❌",
+          "You are now inactive. Please contact your admin."
+        );
+      }
+    }
+
+    return res.status(200).json({
+      message: `Employee status updated to ${employeeStatus}`,
+      userId: user._id,
+      employeeStatus: user.employeeStatus,
+    });
+  } catch (error) {
+    console.error("Update Employee Status Error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
