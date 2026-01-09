@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import JWTService from "../services/JWTServices";
 import moment from "moment-timezone";
 import bcrypt from "bcryptjs";
+import { sendNotification } from "../utils/notifications";
 
 dotenv.config();
 
@@ -243,21 +244,46 @@ export const updateUser = async (req: Request, res: Response) => {
     const updateData: any = { ...req.body };
 
     // NEVER update password here
-    if (updateData.password) {
-      delete updateData.password;
-    }
+    if (updateData.password) delete updateData.password;
 
     // Convert DOB to Pakistan Standard Time if provided
     if (updateData.DOB) {
-      updateData.DOB = moment.tz(updateData.DOB, "Asia/Karachi").format(); // Convert to PST (UTC +5)
+      updateData.DOB = moment.tz(updateData.DOB, "Asia/Karachi").format();
     }
 
-    // Find and update the user
+    // Find the user before update
+    const userBeforeUpdate = await User.findById(req.params.id);
+    if (!userBeforeUpdate)
+      return res.status(404).json({ message: "User not found" });
+
+    // Update the user
     const user = await User.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
     });
 
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (
+      updateData.employeeStatus &&
+      updateData.employeeStatus !== userBeforeUpdate.employeeStatus &&
+      updateData.employeeStatus.toLowerCase() === "inactive"
+    ) {
+      if (user.fcmToken) {
+        try {
+          await sendNotification(
+            [user.fcmToken], // must be an array
+            "Account Status Update ❌",
+            "You are now inactive. Please contact your admin."
+          );
+          console.log(`✅ Notification sent to ${user.name}`);
+        } catch (notifError) {
+          console.error(
+            `❌ Failed to send notification to ${user.name}:`,
+            notifError
+          );
+        }
+      } else {
+        console.log(`⚠️ User ${user.name} has no FCM token`);
+      }
+    }
 
     res.json(user);
   } catch (error) {
@@ -265,6 +291,7 @@ export const updateUser = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Server error", error });
   }
 };
+
 export const updatePassword = async (req: Request, res: Response) => {
   try {
     const { password } = req.body;

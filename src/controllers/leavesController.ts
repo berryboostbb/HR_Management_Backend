@@ -305,14 +305,39 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
     const { status, approvedBy } = req.body;
 
     const leave = await Leave.findById(id);
-    if (!leave) return res.status(404).json({ message: "Leave not found" });
+    if (!leave) {
+      return res.status(404).json({ message: "Leave not found" });
+    }
 
     // ✅ STORE OLD STATUS
     const previousStatus = leave.status;
 
+    // ✅ UPDATE STATUS
     leave.status = status;
     leave.approvedBy = approvedBy;
     await leave.save();
+
+    // 🔔 SEND NOTIFICATION ONLY WHEN STATUS CHANGES
+    if (previousStatus !== status) {
+      const employee = await User.findOne({ employeeId: leave.employeeId });
+
+      if (employee?.fcmToken) {
+        let title = "Leave Update";
+        let body = `Your leave status has been updated to ${status}.`;
+
+        if (status === "Approved") {
+          title = "Leave Approved ✅";
+          body = `Your ${leave.leaveType} has been approved.`;
+        }
+
+        if (status === "Rejected") {
+          title = "Leave Rejected ❌";
+          body = `Your ${leave.leaveType} has been rejected.`;
+        }
+
+        await sendNotification([employee.fcmToken], title, body);
+      }
+    }
 
     /**
      * ✅ ONLY ADD CONSUMED WHEN:
@@ -320,9 +345,11 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
      */
     if (previousStatus !== "Approved" && status === "Approved") {
       const employee = await User.findOne({ employeeId: leave.employeeId });
-      if (!employee)
+      if (!employee) {
         return res.status(404).json({ message: "Employee not found" });
+      }
 
+      // ✅ DEFAULT LEAVE STRUCTURE
       employee.leaveEntitlements = employee.leaveEntitlements || {
         casualLeave: { total: 0, consumed: 0 },
         sickLeave: { total: 0, consumed: 0 },
@@ -340,19 +367,19 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
       };
 
       const leaveKey = leaveKeyMap[leave.leaveType];
-      if (!leaveKey)
+      if (!leaveKey) {
         return res.status(400).json({ message: "Invalid leave type" });
+      }
 
       const startDate = moment(leave.startDate).startOf("day");
       const endDate = moment(leave.endDate).startOf("day");
       const totalDays = endDate.diff(startDate, "days") + 1;
 
-      // ✅ ADD CONSUMED CORRECTLY
+      // ✅ UPDATE CONSUMED LEAVES
       employee.leaveEntitlements[leaveKey].consumed += totalDays;
-
       await employee.save();
 
-      // 🔄 ATTENDANCE UPDATE (UNCHANGED)
+      // 🔄 ATTENDANCE UPDATE
       for (let i = 0; i < totalDays; i++) {
         const dayStart = moment(startDate)
           .add(i, "days")
@@ -390,6 +417,7 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
               leaveType: leave.leaveType,
             },
           });
+          await attendance.save();
         }
       }
     }
@@ -397,7 +425,7 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
     return res.json({ message: `Leave ${status}`, leave });
   } catch (error) {
     console.error("Update Leave Status Error:", error);
-    res.status(500).json({ message: "Server error", error });
+    return res.status(500).json({ message: "Server error", error });
   }
 };
 

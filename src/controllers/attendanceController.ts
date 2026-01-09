@@ -7,6 +7,7 @@ import moment from "moment-timezone";
 import Leave from "../models/leavesModel";
 import companyTimingModel from "../models/companyTimingModel";
 import CompanyTiming from "../models/companyTimingModel";
+import { sendNotification } from "../utils/notifications";
 
 const isLateCheckIn = (checkInDate: Date, startTime: string) => {
   const [hours, minutes] = startTime.split(":").map(Number);
@@ -23,11 +24,13 @@ export const createDailyAttendance = async (req: Request, res: Response) => {
 
     // Get today's date in UTC - Start of the day
     const todayInUTC = moment.utc().startOf("day");
-
     console.log(
       "🚀 ~ createDailyAttendance ~ todayInUTC:",
       todayInUTC.format()
     );
+
+    const notifiedUsers: string[] = [];
+    const skippedUsers: string[] = [];
 
     for (const employee of employees) {
       // 1️⃣ Check if employee has leave today
@@ -69,9 +72,40 @@ export const createDailyAttendance = async (req: Request, res: Response) => {
         await newAttendance.save();
         console.log(`Attendance created for ${employee.name}`);
       }
+
+      // 4️⃣ Send notification to all employees (if they have FCM token)
+      if (employee.fcmToken) {
+        try {
+          await sendNotification(
+            employee.fcmToken,
+            "Attendance Reminder ⏰",
+            "Please check in your time for today."
+          );
+          notifiedUsers.push(employee.name || employee.employeeId);
+        } catch (notifError) {
+          console.error(
+            `❌ Failed to send notification to ${
+              employee.name || employee.employeeId
+            }:`,
+            notifError
+          );
+          skippedUsers.push(employee.name || employee.employeeId);
+        }
+      } else {
+        skippedUsers.push(employee.name || employee.employeeId);
+      }
     }
 
-    res.json({ message: "Attendance records successfully created for today." });
+    console.log(`✅ Notifications sent to: ${notifiedUsers.join(", ")}`);
+    if (skippedUsers.length > 0) {
+      console.log(`⚠️ No FCM token for: ${skippedUsers.join(", ")}`);
+    }
+
+    res.json({
+      message: "Attendance records successfully created for today.",
+      notifiedUsers,
+      skippedUsers,
+    });
   } catch (error) {
     console.error("Error creating daily attendance records:", error);
     res
@@ -572,7 +606,6 @@ export const getAttendanceSummary = async (req: Request, res: Response) => {
 };
 
 // Get Logged-in User's Attendance Status
-
 export const getUserAttendanceStatus = async (req: Request, res: Response) => {
   try {
     // Extract token from Authorization header (e.g., "Bearer <your-jwt-token>")
@@ -959,28 +992,64 @@ export const setCompanyTiming = async (req: Request, res: Response) => {
       });
     }
 
-    // Find existing timing
+    // 1️⃣ Find existing timing
     let timing = await CompanyTiming.findOne();
 
     if (!timing) {
-      // ✅ Create new timing if none exists
+      // Create new timing if none exists
       timing = await CompanyTiming.create({
         startTime,
         endTime,
         lateAfterMinutes,
       });
     } else {
-      // ✅ Update existing timing
+      // Update existing timing
       timing.startTime = startTime;
       timing.endTime = endTime;
       timing.lateAfterMinutes = lateAfterMinutes;
       await timing.save();
     }
 
+    // 2️⃣ Fetch all users
+    const users = await User.find({});
+    const notifiedUsers: string[] = [];
+    const skippedUsers: string[] = [];
+
+    // 3️⃣ Send notification to all users who have fcmToken
+    for (const user of users) {
+      if (user.fcmToken) {
+        try {
+          await sendNotification(
+            user.fcmToken,
+            "Company Timing Updated 🕒",
+            `New company timing is from ${startTime} to ${endTime}. Late after ${lateAfterMinutes} minutes.`
+          );
+          notifiedUsers.push(user.name || user.employeeId || "Unknown");
+        } catch (err) {
+          console.error(
+            `❌ Failed to send notification to ${
+              user.name || user.employeeId
+            }:`,
+            err
+          );
+          skippedUsers.push(user.name || user.employeeId || "Unknown");
+        }
+      } else {
+        skippedUsers.push(user.name || user.employeeId || "Unknown");
+      }
+    }
+
+    console.log(`✅ Notifications sent to: ${notifiedUsers.join(", ")}`);
+    if (skippedUsers.length > 0) {
+      console.log(`⚠️ No FCM token for: ${skippedUsers.join(", ")}`);
+    }
+
     res.json({
       success: true,
-      message: "Company timing set successfully",
+      message: "Company timing set successfully and notifications sent",
       timing,
+      notifiedUsers,
+      skippedUsers,
     });
   } catch (error) {
     console.error("Error setting company timing:", error);

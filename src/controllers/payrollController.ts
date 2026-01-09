@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import Payroll from "../models/payrollModel";
 import { generateSalarySlipPDF } from "../utils/generateSalarySlipPDF";
 import path from "path";
+import { sendNotification } from "../utils/notifications";
+import User from "../models/userModel";
 
 export const generatePayroll = async (req: Request, res: Response) => {
   try {
@@ -87,11 +89,27 @@ export const approvePayroll = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Payroll is already approved" });
     }
 
+    // ✅ Update payroll status
     payroll.payrollStatus = "Approved";
     payroll.approvedBy = approvedBy;
     payroll.approvedAt = new Date();
 
     await payroll.save();
+
+    // 🔔 Send notification to the employee
+    const employee = await User.findOne({ employeeId: payroll.employeeId });
+
+    if (employee?.fcmToken) {
+      // Using 3 arguments version of sendNotification
+      await sendNotification(
+        employee.fcmToken,
+        "Payroll Approved ✅",
+        `Your payroll for ${payroll.month} ${payroll.year} has been approved by ${approvedBy}.`
+      );
+      console.log(`✅ Notification sent to ${employee.name}`);
+    } else {
+      console.log(`⚠️ No FCM token found for employee ${payroll.employeeId}`);
+    }
 
     res.status(200).json({
       message: "Payroll approved successfully",
@@ -125,6 +143,7 @@ export const getAllPayrolls = async (req: Request, res: Response) => {
 export const updatePayroll = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+
     const payroll = await Payroll.findById(id);
     if (!payroll) return res.status(404).json({ message: "Payroll not found" });
 
@@ -142,7 +161,6 @@ export const updatePayroll = async (req: Request, res: Response) => {
       presentDays,
       approvedLeaves,
       basicSalary,
-      totalWorkingDays,
       allowances,
       deductions,
     } = req.body;
@@ -159,30 +177,44 @@ export const updatePayroll = async (req: Request, res: Response) => {
     payroll.allowances = allowances ?? payroll.allowances;
     payroll.deductions = deductions ?? payroll.deductions;
 
-    // Recalculate salaries
+    // Recalculate salary
     const totalAllowances =
-      (payroll.allowances.medical || 0) +
-      (payroll.allowances.transport || 0) +
-      (payroll.allowances.others || 0);
+      (payroll.allowances?.medical || 0) +
+      (payroll.allowances?.transport || 0) +
+      (payroll.allowances?.others || 0);
+
     const totalDeductions =
-      (payroll.deductions.pf || 0) +
-      (payroll.deductions.loan || 0) +
-      (payroll.deductions.advanceSalary || 0) +
-      (payroll.deductions.tax || 0) +
-      (payroll.deductions.others || 0);
+      (payroll.deductions?.pf || 0) +
+      (payroll.deductions?.loan || 0) +
+      (payroll.deductions?.advanceSalary || 0) +
+      (payroll.deductions?.tax || 0) +
+      (payroll.deductions?.others || 0);
 
     payroll.grossSalary = payroll.basicSalary + totalAllowances;
     payroll.netPay = payroll.grossSalary - totalDeductions;
 
-    // Regenerate salary slip if requested
     if (req.body.regenerateSalarySlip) {
-      const salarySlipUrl = await generateSalarySlipPDF(payroll);
-      payroll.salarySlipUrl = salarySlipUrl;
+      payroll.salarySlipUrl = await generateSalarySlipPDF(payroll);
     }
 
     await payroll.save();
-    res.status(200).json({ message: "Payroll updated successfully", payroll });
+    const employee = await User.findOne({ employeeId: payroll.employeeId });
+
+    if (employee?.fcmToken) {
+      await sendNotification(
+        employee.fcmToken,
+        "Payroll Updated",
+        `Your payroll for ${payroll.month} ${payroll.year} has been updated.`,
+        { type: "PAYROLL", payrollId: payroll._id.toString() }
+      );
+    }
+
+    res.status(200).json({
+      message: "Payroll updated successfully",
+      payroll,
+    });
   } catch (error: any) {
+    console.error("Update Payroll Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
